@@ -173,7 +173,8 @@ export async function fetchForecast(
 export interface DayForecast {
   date: string; // YYYY-MM-DD (local)
   hours: HourPoint[];
-  safeWindow: SafestWindow; // safest window that day
+  safeWindow: SafestWindow; // safest window that day (primary, used by plan engine)
+  safeWindows: SafestWindow[]; // morning + evening pair for display (1 or 2 entries)
   peak: HeatConditions; // hottest hour that day (drives the outlook flag)
 }
 
@@ -241,7 +242,7 @@ export async function fetchMultiDayForecast(
       const peak = hours.reduce((a, b) =>
         b.conditions.heatIndexC > a.conditions.heatIndexC ? b : a,
       ).conditions;
-      return { date, hours, safeWindow: pickSafestWindow(hours, tightenC), peak };
+      return { date, hours, safeWindow: pickSafestWindow(hours, tightenC), safeWindows: pickWindowPair(hours, tightenC), peak };
     });
 
   return { timezone: data.timezone, now, days: forecastDays };
@@ -273,6 +274,26 @@ export function pickSafestWindow(hours: HourPoint[], tightenC = 0): SafestWindow
     })[0].p;
 
   return { label: windowLabel(best.hour), point: best };
+}
+
+/**
+ * Pick the best window from the morning (5–11) and the evening/night (17–22)
+ * independently. Only includes a slot if it is not HARD_STOP. Returns in time
+ * order (morning first, evening second) so UI can render them chronologically.
+ */
+export function pickWindowPair(hours: HourPoint[], tightenC = 0): SafestWindow[] {
+  const rank = (l: string) => (l === "NORMAL" ? 0 : l === "CAUTION" ? 1 : 2);
+  function bestOf(pool: HourPoint[]): SafestWindow | null {
+    if (!pool.length) return null;
+    const rated = pool
+      .map((p) => ({ p, level: evaluateEnvironment(p.conditions, tightenC).level }))
+      .sort((a, b) => rank(a.level) - rank(b.level) || a.p.conditions.heatIndexC - b.p.conditions.heatIndexC);
+    if (rated[0].level === "HARD_STOP") return null;
+    return { label: windowLabel(rated[0].p.hour), point: rated[0].p };
+  }
+  const am = bestOf(hours.filter((h) => h.hour >= 5 && h.hour <= 11));
+  const pm = bestOf(hours.filter((h) => h.hour >= 17 && h.hour <= 22));
+  return [am, pm].filter((w): w is SafestWindow => w !== null);
 }
 
 function to12h(h: number): string {

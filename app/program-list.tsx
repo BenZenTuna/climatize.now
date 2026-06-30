@@ -112,7 +112,9 @@ function DayRow({ d, units }: { d: ProgramDay; units: Units }) {
           </div>
           <div className="mt-0.5 text-sm text-slate-600">
             {summary}
-            {d.windowLabel && d.minutes > 0 && <span className="text-slate-400"> · {d.windowLabel}</span>}
+            {d.windowLabels.length > 0 && d.minutes > 0 && (
+              <span className="text-slate-400"> · {d.windowLabels.join(" & ")}</span>
+            )}
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
@@ -128,8 +130,8 @@ function DayRow({ d, units }: { d: ProgramDay; units: Units }) {
           )}
           <span className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${o.cls}`}>
             <span className={`h-1.5 w-1.5 rounded-full ${o.dot}`} />
-            {d.outlook === "GOOD" && extractTime(d.windowLabel)
-              ? `Good window · ${extractTime(d.windowLabel)}`
+            {d.outlook === "GOOD" && d.windowLabels.length > 0
+              ? `Good window · ${d.windowLabels.map(extractTime).filter(Boolean).join(" & ")}`
               : o.label}
           </span>
           <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${open ? "rotate-180" : ""}`} />

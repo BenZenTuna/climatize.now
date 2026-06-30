@@ -179,17 +179,24 @@ export default function TodayPage() {
         <p className="mt-1 text-sm text-slate-700">{safety.sub}</p>
 
         {plan.exposureMinutesTarget > 0 && (
-          <div className="mt-3 flex items-center gap-3 rounded-xl border border-white/70 bg-white/70 px-3 py-2.5">
-            <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${safety.chip}`}>
-              {windowIsNight ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
-            </span>
-            <div className="min-w-0">
-              <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                Best window to be outside
-              </div>
-              <div className="truncate text-lg font-bold leading-tight text-slate-900 first-letter:uppercase">
-                {plan.timeWindow}
-              </div>
+          <div className="mt-3 rounded-xl border border-white/70 bg-white/70 px-3 py-2.5">
+            <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              {view!.windowLabels.length > 1 ? "Good windows to be outside" : "Best window to be outside"}
+            </div>
+            <div className="mt-1.5 flex flex-col gap-1.5">
+              {view!.windowLabels.map((label) => {
+                const isNight = /night|evening/i.test(label);
+                return (
+                  <div key={label} className="flex items-center gap-2">
+                    <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${safety.chip}`}>
+                      {isNight ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+                    </span>
+                    <span className="text-base font-bold leading-tight text-slate-900 first-letter:uppercase">
+                      {label}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
