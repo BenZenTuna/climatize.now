@@ -1,8 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
+import Script from "next/script";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { SwRegister } from "./sw-register";
+
+// Change "climatize-now" below if you chose a different site code on goatcounter.com
+const GC_SITE = "climatize-now";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -44,6 +48,13 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <SwRegister />
+        {process.env.NODE_ENV === "production" && (
+          <Script
+            data-goatcounter={`https://${GC_SITE}.goatcounter.com/count`}
+            src="https://gc.zgo.at/count.js"
+            strategy="afterInteractive"
+          />
+        )}
         {children}
         <footer className="mt-auto border-t border-slate-100 px-5 py-5 text-center text-xs text-slate-400">
           <div className="flex items-center justify-center gap-3">

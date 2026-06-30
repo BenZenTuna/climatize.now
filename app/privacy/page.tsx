@@ -56,11 +56,16 @@ export default function Privacy() {
               devices, and <strong>clearing your browser data will erase it.</strong>
             </li>
             <li>
-              Third-party note: weather and place look-ups are served by{" "}
+              <strong>Third-party services:</strong> weather and place look-ups are served by{" "}
               <a className="underline" href="https://open-meteo.com" target="_blank" rel="noopener noreferrer">
                 Open-Meteo
               </a>
-              , which receives the coordinates it needs to return a forecast.
+              , which receives the coordinates it needs to return a forecast. This site also uses{" "}
+              <a className="underline" href="https://www.goatcounter.com" target="_blank" rel="noopener noreferrer">
+                GoatCounter
+              </a>{" "}
+              for anonymous page-view counting — no cookies, no personal data, no cross-site tracking,
+              and no consent banner required (GDPR-exempt aggregate analytics).
             </li>
           </ul>
         </section>
