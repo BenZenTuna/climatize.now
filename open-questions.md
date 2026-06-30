@@ -37,6 +37,14 @@ I'll adjust the model.
 Showing °C with a one-tap °F toggle. If your users are mostly US-based, I can default the
 toggle to °F. (Trivial to change.)
 
+### Q5 — Should self-reported sweat response feed the daily adjustment?
+The daily check-in already asks how your sweat response felt (barely → quick & free), but the
+scoring engine doesn't use that answer yet — it drives the plan from overall feeling, sleep,
+thirst, exertion, headache/dizziness. Earlier, freer sweating is a genuine sign of adaptation,
+so I could let a strong sweat response nudge progress up (and a stubbornly poor one hold it).
+It's a small, defensible refinement; I left it out for now to avoid changing the tested scoring
+without your nod. Say the word and I'll wire it in (with tests). Not a blocker.
+
 ---
 
 ## Resolved

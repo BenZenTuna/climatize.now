@@ -15,13 +15,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "BaseHeat — your daily heat-adaptation plan",
+  title: "climatize.now — your daily heat-adaptation plan",
   description:
     "A personalized, weather-driven plan to adapt to heat safely. No accounts, no tracking. Wellness guidance, not medical advice.",
   manifest: "/manifest.webmanifest",
-  appleWebApp: { capable: true, title: "BaseHeat", statusBarStyle: "default" },
+  appleWebApp: { capable: true, title: "climatize.now", statusBarStyle: "default" },
   openGraph: {
-    title: "BaseHeat — your daily heat-adaptation plan",
+    title: "climatize.now — your daily heat-adaptation plan",
     description: "A personalized, weather-driven plan to adapt to heat safely.",
     type: "website",
     images: ["/icon-512.png"],

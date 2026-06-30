@@ -1,6 +1,6 @@
 {
-  "name": "BaseHeat — heat-adaptation plan",
-  "short_name": "BaseHeat",
+  "name": "climatize.now — heat-adaptation plan",
+  "short_name": "climatize.now",
   "description": "A personalized, weather-driven plan to adapt to heat safely. Wellness guidance, not medical advice.",
   "start_url": "/",
   "scope": "/",

@@ -15,7 +15,10 @@ import type {
   DailyFeedback,
 } from "./physiology/types";
 
-const KEY = "baseheat.state.v1";
+const KEY = "climatize.state.v1";
+// Older brand key(s). loadState() migrates these into KEY once, so the rebrand never
+// wipes anyone's local data (the whole app lives in localStorage — see decisions D21).
+const LEGACY_KEYS = ["baseheat.state.v1"];
 
 export interface StoredLog extends DailyFeedback {
   notes: string | null;
@@ -64,7 +67,19 @@ export const EMPTY_SCREENING: ScreeningFlags = {
 export function loadState(): AppState | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = window.localStorage.getItem(KEY);
+    let raw = window.localStorage.getItem(KEY);
+    if (!raw) {
+      // One-time migration from a previous brand's key, so existing users keep their data.
+      for (const legacy of LEGACY_KEYS) {
+        const old = window.localStorage.getItem(legacy);
+        if (old) {
+          window.localStorage.setItem(KEY, old);
+          window.localStorage.removeItem(legacy);
+          raw = old;
+          break;
+        }
+      }
+    }
     if (!raw) return null;
     const parsed = JSON.parse(raw) as AppState;
     if (parsed?.version !== 1 || !parsed.persona || !parsed.current) return null;
@@ -82,6 +97,7 @@ export function saveState(state: AppState): void {
 export function clearState(): void {
   if (typeof window === "undefined") return;
   window.localStorage.removeItem(KEY);
+  for (const legacy of LEGACY_KEYS) window.localStorage.removeItem(legacy);
 }
 
 /**

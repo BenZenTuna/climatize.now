@@ -4,9 +4,9 @@ import { Brand } from "@/app/brand";
 import { ShieldCheck, Alert } from "@/app/icons";
 
 export const metadata: Metadata = {
-  title: "Privacy & terms — BaseHeat",
+  title: "Privacy & terms — climatize.now",
   description:
-    "BaseHeat stores nothing on a server. No accounts, no tracking. Everything you enter stays in your browser. Wellness guidance, not medical advice.",
+    "climatize.now stores nothing on a server. No accounts, no tracking. Everything you enter stays in your browser. Wellness guidance, not medical advice.",
 };
 
 export default function Privacy() {
@@ -14,7 +14,7 @@ export default function Privacy() {
     <main className="mx-auto w-full max-w-2xl px-4 py-8 sm:px-5">
       <Brand className="mb-6" />
       <Link href="/" className="text-sm text-slate-400 hover:text-slate-600">
-        ← Back to BaseHeat
+        ← Back to climatize.now
       </Link>
 
       <header className="mt-3 mb-6">
@@ -71,7 +71,7 @@ export default function Privacy() {
           </h2>
           <div className="mt-2 space-y-2 text-sm leading-relaxed text-amber-900">
             <p>
-              BaseHeat provides general wellness information to help you adapt to heat gradually. It
+              climatize.now provides general wellness information to help you adapt to heat gradually. It
               is <strong>not medical advice</strong>, cannot diagnose or treat any condition, and is
               no substitute for a qualified health professional. Use it at your own discretion and
               risk.
@@ -93,7 +93,7 @@ export default function Privacy() {
         <section className="rounded-2xl border border-slate-100 bg-white p-5 text-sm leading-relaxed text-slate-600 shadow-sm">
           <h2 className="text-lg font-bold text-slate-900">Terms, briefly</h2>
           <p className="mt-2">
-            BaseHeat is provided &quot;as is,&quot; without warranties of any kind. To the extent
+            climatize.now is provided &quot;as is,&quot; without warranties of any kind. To the extent
             permitted by law, the makers accept no liability for any loss or harm arising from its
             use. By using it you agree to these terms and acknowledge it is wellness guidance, not
             medical advice.

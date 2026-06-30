@@ -38,6 +38,8 @@ export interface SafetyAssessment {
   riskTier: RiskTier;
   reasons: string[];
   environmentalReasons: string[];
+  /** One plain-language sentence describing the heat (no jargon); "" when mild. */
+  environmentalSummary: string;
   screeningReasons: string[];
 }
 

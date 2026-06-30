@@ -5,6 +5,68 @@ Newest entry at the top.
 
 ---
 
+## 2026-06-30 — Plain-language heat note (de-jargoned the caution copy)
+
+Owner couldn't understand the caution "Heat note" line ("wet-bulb 23.3°C is high; heat index
+31°C is in the Extreme-Caution range; WBGT 25.1°C is elevated") and suspected it was wrong.
+It was confusing (jargon + the numbers are the *window* values, clashing with the hero's
+"feels like 40°C") and subtly wrong (31°C was flagged only by the HIGH-risk threshold
+tightening — 31°C isn't actually in the NWS Extreme-Caution band). Fix (decisions D29):
+- `safety.ts` `evaluateEnvironment` now also returns a **plain `summary`** (no metric names),
+  with humidity mentioned only when wet-bulb/WBGT is the driver; kept the technical `reasons`
+  for transparency but they're no longer shown. Removed the inaccurate "Extreme-Caution range"
+  wording. `SafetyAssessment` gains `environmentalSummary`.
+- `plan-engine.ts`: the heat note now reads "Heat note: even in your **{window}** window,
+  it still feels about 31°C and the humidity makes it harder for your body to cool down." —
+  anchoring the number to the planned window so 40°C-now vs 31°C-window makes sense. Same plain
+  summary flows into the rationale and the hard-stop cautions. Also fixed an adjacent awkward
+  phrase ("20 minutes of *rest* activity" → "passive heat exposure").
+- New tests in `plan-engine.test.ts` assert the note is plain (no wet-bulb/WBGT/heat-index/
+  Extreme-Caution) and that humidity is mentioned only when it's the driver. 66 tests + tsc +
+  build clean. Verified live (Slivo Pole + heart condition).
+
+## 2026-06-30 — Rebrand: BaseHeat → climatize.now
+
+Owner bought the domain **climatize.now** and asked to rename the platform. Done across all
+user-facing surfaces + internal identifiers (decisions D28):
+- **Wordmark** `app/brand.tsx`: "BaseHeat" → "climatize<span>.now</span>" (".now" in
+  orange-500). Flame logo kept. Every screen uses `<Brand/>`, so this covers them all.
+- **Metadata/PWA**: `app/layout.tsx` (title, appleWebApp, OpenGraph), `app/how-it-works`,
+  `app/privacy` (titles, descriptions, back-links, body copy), `public/manifest.webmanifest`
+  (name/short_name). theme-color & icons unchanged.
+- **Internal IDs**: `package.json` name → `climatize-now`; `public/sw.js` cache →
+  `climatize-v1` (the activate handler auto-deletes the old `baseheat-v1` cache).
+- **localStorage key**: `baseheat.state.v1` → **`climatize.state.v1`**, with a one-time
+  migration in `lib/store.ts` (`LEGACY_KEYS`) so NO existing data is lost (it's the whole
+  app's storage). `clearState` clears both.
+- Docs updated (`CLAUDE.md` title + key note, `architecture.md`). Historical log entries
+  below are left as-is (they record the old name as history). 64 tests + tsc + build clean.
+
+## 2026-06-30 — Merged safety+window card, rest-of-day recovery, science review
+
+Owner notes on a Today-screen screenshot (3 asks). All done; 64 tests + tsc + static
+build clean (decisions D27):
+- **Merged the two stacked boxes into one** colour-coded card (`app/today/page.tsx`):
+  the old amber "very hot right now" note + the green "Today's heat safety" card are now
+  a single card that leads with the verdict, shows a **prominent, coloured "Best window
+  to be outside"** chip (sun/moon + the window label), and folds the "it's hot now — that's
+  why it's timed for the cooler window" line inside it. Dropped the unclear "TODAY'S HEAT
+  SAFETY" caption.
+- **Rest-of-day recovery guidance** (Note 2): new pure module `lib/physiology/recovery.ts`
+  (`restOfDayGuidance`) — climate-tiered MILD/WARM/HOT/EXTREME advice for spending the rest
+  of the day, split **with AC vs without AC**, keyed to the remaining-hours peak. Includes
+  the evidence-based **fan caveat** (above ~35°C air a fan stops cooling / can dehydrate →
+  wet skin, cool showers, seek a cooler space) via new constant `FAN_INEFFECTIVE_AIR_TEMP_C`.
+  `client-program.ts` computes the remaining-hours peak feels-like/air-temp + "hot until ~Xpm"
+  and adds `restOfDay` + `restOfDayPeakFeelsLikeC` to `TodayView`; new card on `/today`.
+- **Science review** (Note 3, owner chose "recommendations + recovery"): kept the validated
+  safety thresholds and dose/ramp numbers (already evidence-based, pending clinician sign-off
+  Q1); added the recovery model, made the post-session step **active cooling**, and documented
+  the science + sources on `app/how-it-works/` (new "After your session" section; added Périard
+  2015 and CDC/EPA/WHO fan sources). Parked one refinement as open-questions **Q5**
+  (self-reported sweat response isn't yet used in feedback scoring).
+- New icons `Home`/`Wind`; new tests `recovery.test.ts` (6).
+
 ## 2026-06-29 — Trust pages, PWA, real calendar + progress trends
 
 Owner picked 3 of the suggested improvements (skipped data export/edit-setup). All done,

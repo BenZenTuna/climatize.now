@@ -1,12 +1,12 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { Brand } from "@/app/brand";
-import { Thermometer, Droplet, ShieldCheck, Activity, Sparkle } from "@/app/icons";
+import { Thermometer, Droplet, ShieldCheck, Activity, Sparkle, Home } from "@/app/icons";
 
 export const metadata: Metadata = {
-  title: "How BaseHeat works — the science",
+  title: "How climatize.now works — the science",
   description:
-    "How BaseHeat reads real heat strain, estimates your baseline, and builds a safe, gradual heat-adaptation plan — in plain language, with sources.",
+    "How climatize.now reads real heat strain, estimates your baseline, and builds a safe, gradual heat-adaptation plan — in plain language, with sources.",
 };
 
 function Section({
@@ -34,13 +34,13 @@ export default function HowItWorks() {
     <main className="mx-auto w-full max-w-2xl px-4 py-8 sm:px-5">
       <Brand className="mb-6" />
       <Link href="/" className="text-sm text-slate-400 hover:text-slate-600">
-        ← Back to BaseHeat
+        ← Back to climatize.now
       </Link>
 
       <header className="mt-3 mb-6">
         <h1 className="text-3xl font-bold text-slate-900">How it works</h1>
         <p className="mt-2 text-slate-600">
-          BaseHeat is a transparent, rules-based coach for adapting to heat safely. No black-box AI
+          climatize.now is a transparent, rules-based coach for adapting to heat safely. No black-box AI
           — just published physiology you can read here, line by line.
         </p>
       </header>
@@ -103,6 +103,23 @@ export default function HowItWorks() {
           </p>
         </Section>
 
+        <Section icon={<Home className="h-5 w-5" />} title="After your session: cool down and recover">
+          <p>
+            Adaptation is driven by the daily <strong>dose</strong> of heat — the timed session — not
+            by baking all day. So once you&apos;ve done it, the rest of the day is for{" "}
+            <strong>recovering and avoiding extra heat strain</strong>: cool down, hydrate, and sleep
+            well (a lot of the adaptation consolidates with rest). Resting somewhere cool — even
+            air-conditioned — won&apos;t undo your progress.
+          </p>
+          <p>
+            So every plan includes <strong>climate-specific guidance for the rest of the day</strong>,
+            with and without air conditioning. One detail that matters: once the <em>air</em> is hotter
+            than your skin (roughly 35°C / 95°F), an electric fan stops cooling you and can speed
+            dehydration — so in extreme heat we tell you to wet your skin so moving air still helps,
+            take cool showers, and seek a cooler space, rather than rely on a fan alone.
+          </p>
+        </Section>
+
         <Section icon={<ShieldCheck className="h-5 w-5" />} title="Safety always wins">
           <p>
             A safety layer sits above everything and can never be bypassed by your goal or progress:
@@ -141,7 +158,11 @@ export default function HowItWorks() {
             <li>Stull, R. (2011), &quot;Wet-Bulb Temperature from RH and Air Temperature,&quot; JAMC.</li>
             <li>ACSM position stand on exertional heat illness; US Army WBGT flag system.</li>
             <li>Vecellio et al. (2022), critical environmental limits, J. Appl. Physiol.</li>
-            <li>Heat-acclimatization reviews (timeline ~7–14 days; decay over ~2–4 weeks).</li>
+            <li>
+              Périard et al. (2015), &quot;Adaptations and mechanisms of human heat acclimation,&quot;
+              Scand. J. Med. Sci. Sports (timeline ~7–14 days; decay over ~2–4 weeks).
+            </li>
+            <li>US CDC &amp; EPA excessive-heat guidance; WHO advice on fan use during heatwaves.</li>
           </ul>
           <p className="mt-3">
             These thresholds are best-effort and pending review by a qualified clinician before

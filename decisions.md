@@ -223,3 +223,93 @@ control (excluded from the production build via `process.env.NODE_ENV`) bumps `d
 so the loop is still testable in one sitting. Adaptation is still derived by replaying logs,
 so no migration needed; the old `currentDay` field is simply ignored. Added
 `app/progress-trends.tsx` (sparklines of the self-report markers over logged days).
+
+---
+
+## 2026-06-30 — Merged safety/window card, rest-of-day recovery, science review
+
+**D27 — Three owner-requested changes from a Today-screen screenshot.**
+
+*(a) The safety verdict and the go-outside window are now ONE card.* The old design
+stacked an amber "very hot right now…" note above a separate green "TODAY'S HEAT SAFETY"
+card; the owner found the caption unclear as its own field and wanted the time window shown
+clearly. The merged card (`app/today/page.tsx`) leads with the plain-language verdict
+(Good to go gently / Caution / Stop), then shows a **prominent, safety-coloured "Best window
+to be outside"** chip (sun/moon + the window label), and folds the "it's hot right now —
+that's why your session is timed for the cooler window" sentence inside it. The window chip
+only shows when there's an active session (HARD_STOP days have no go-time, by design).
+
+*(b) Rest-of-day recovery guidance is a first-class part of every plan.* Rationale is
+physiological: acclimatization is driven by the daily heat *dose* (the timed session), not
+by 24/7 exposure — so after the session the right thing is to recover and avoid extra heat
+strain (supports plasma-volume restoration, sleep, and heat-illness prevention in peak
+hours), and recovering somewhere cool/AC does NOT undo adaptation. New pure module
+`lib/physiology/recovery.ts` (`restOfDayGuidance`) tiers the remaining-hours peak feels-like
+into MILD/WARM/HOT/EXTREME and returns **with-AC vs without-AC** advice + a recovery note.
+The without-AC advice is keyed to AIR temperature via a new constant
+`FAN_INEFFECTIVE_AIR_TEMP_C = 35°C` (~95°F): above it a fan no longer reliably cools and can
+speed dehydration, so the advice switches to wetting the skin / cool showers / seeking a
+cooler space rather than a fan alone (CDC/EPA/WHO; Jay et al.). `client-program.ts` computes
+the remaining-hours peak (feels-like + air temp) and a "hot until ~Xpm" label and adds
+`restOfDay`/`restOfDayPeakFeelsLikeC` to `TodayView`.
+
+*(c) Scientific review — scope chosen by the owner: "recommendations + recovery".* We
+**kept** the validated safety thresholds (D18) and the dose/ramp numbers (D16) — both are
+already evidence-based and explicitly pending clinician sign-off (Q1), so churning them
+adds risk without clear benefit. The science-led *changes* are: the recovery model above;
+the post-session step is now **active** cooling (shade/AC, cool drink, water on skin), which
+the literature supports for faster core-temp recovery; and the science is now documented with
+sources on `app/how-it-works/` (new "After your session" section; added Périard et al. 2015
+and CDC/EPA/WHO fan guidance). One genuine refinement is parked as **Q5**: self-reported
+sweat response is collected but not yet used in feedback scoring, even though earlier/freer
+sweating is a real adaptation marker.
+
+This change touches only copy, the additive recovery model, and the Today UI — the
+safety overlay and the tested acclimatization core are unchanged. 64 tests pass
+(6 new in `recovery.test.ts`); tsc + static export clean.
+
+---
+
+## 2026-06-30 — Rebrand: BaseHeat → climatize.now
+
+**D28 — The product is now "climatize.now" (the owner's purchased domain).** Renamed
+across every user-facing surface (the `<Brand/>` wordmark — ".now" set in orange-500, flame
+logo kept; page titles, descriptions, OpenGraph, Apple web-app title; the how-it-works and
+privacy copy; and the PWA manifest name/short_name) and internal identifiers (`package.json`
+name → `climatize-now`; service-worker cache → `climatize-v1`, whose existing activate
+handler deletes the old `baseheat-v1` cache automatically).
+
+**The localStorage key changed `baseheat.state.v1` → `climatize.state.v1`, WITH a one-time
+migration** (`LEGACY_KEYS` in `lib/store.ts`): `loadState` copies any legacy value into the
+new key and removes the old one; `clearState` clears both. Rationale: the entire app lives in
+localStorage (D21), so renaming the key without migrating would silently wipe every existing
+user's goal/locations/health answers/logs — unacceptable for a rebrand. The migration makes
+it lossless. Keeping the legacy key name in code (as a migration source) is deliberate.
+
+Historical entries in `memory.md`/`decisions.md` keep the old "BaseHeat" name as a matter of
+record; only current-state docs (`CLAUDE.md`, `architecture.md`) were updated. The flame
+icon, theme color (#ea580c), and all physiology/safety logic are unchanged.
+
+---
+
+## 2026-06-30 — Plain-language heat note (de-jargoned the caution copy)
+
+**D29 — User-facing safety copy describes the heat in plain words, not raw metrics.** The
+caution card's "Heat note" used to dump the three internal metrics ("wet-bulb 23.3°C is high;
+heat index 31°C is in the Extreme-Caution range; WBGT 25.1°C is elevated"). The owner (the
+target user — non-technical) couldn't understand it, and it had two real flaws: (1) those are
+the *exposure-window* values, which clashed with the hero's "feels like 40°C" (now) with no
+explanation, and (2) "31°C is in the Extreme-Caution range" was inaccurate — 31°C is below the
+NWS Extreme-Caution band (32.2°C) and was flagged only because a HIGH-risk screening *tightens*
+the gates by 3°C.
+
+Fix: `evaluateEnvironment` now returns a single plain-language `summary` (e.g. "it still feels
+about 31°C and the humidity makes it harder for your body to cool down") alongside the
+technical `reasons` (kept for transparency/debug but no longer shown). Humidity is named only
+when wet-bulb or WBGT is the trigger. `SafetyAssessment` carries `environmentalSummary`. The
+plan engine anchors it to the planned window — "Heat note: even in your {window} window,
+{summary}." — so the window's feels-like clearly differs from "right now"; the same summary
+feeds the rationale and the hard-stop cautions. Removed the inaccurate "Extreme-Caution range"
+wording and an adjacent contradictory phrase ("X minutes of *rest* activity" → "passive heat
+exposure"). Thresholds, tiers, doses and the safety gating are all unchanged — this is copy
+only. Tests in `plan-engine.test.ts` lock in that the note stays jargon-free (66 tests pass).

@@ -4,7 +4,7 @@ The current high-level shape of the system. Keep this accurate as the system gro
 
 ## Big picture
 
-BaseHeat is a **fully client-side, static web app** — public, anonymous, with **no accounts
+climatize.now is a **fully client-side, static web app** — public, anonymous, with **no accounts
 and no server-side storage**. Everything the visitor enters (goal, locations, health
 answers, daily logs) lives only in their **browser** (`localStorage`). The plan engine runs
 in the browser, and weather is fetched directly from Open-Meteo by the browser, so no
@@ -81,7 +81,7 @@ lib/
 next.config.ts            output: "export" (static site)                     [done]
 ```
 
-## Storage shape (`localStorage` key `baseheat.state.v1`)
+## Storage shape (`localStorage` key `climatize.state.v1`, migrated from `baseheat.state.v1`)
 
 `AppState` = persona · units · origin{label,lat,lon,band,baselineHeatIndexC} ·
 current{label,lat,lon} · screening · tripEndISO · startISO · currentDay ·

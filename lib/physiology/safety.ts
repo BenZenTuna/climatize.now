@@ -70,7 +70,7 @@ export function assessScreening(s: ScreeningFlags): {
 export function evaluateEnvironment(
   c: HeatConditions,
   tightenC = 0,
-): { level: SafetyLevel; reasons: string[] } {
+): { level: SafetyLevel; reasons: string[]; summary: string } {
   const hardWet = HARD_STOP.wetBulbC - tightenC;
   const hardHi = HARD_STOP.heatIndexC - tightenC;
   const hardWbgt = HARD_STOP.wbgtC - tightenC;
@@ -78,29 +78,42 @@ export function evaluateEnvironment(
   const cautHi = CAUTION.heatIndexC - tightenC;
   const cautWbgt = CAUTION.wbgtC - tightenC;
 
-  const reasons: string[] = [];
+  const feels = Math.round(c.heatIndexC);
 
-  if (c.wetBulbC >= hardWet || c.heatIndexC >= hardHi || c.wbgtC >= hardWbgt) {
-    if (c.wetBulbC >= hardWet)
-      reasons.push(`wet-bulb ${c.wetBulbC.toFixed(1)}°C is at/above the safe ceiling`);
-    if (c.heatIndexC >= hardHi)
-      reasons.push(`heat index ${c.heatIndexC.toFixed(0)}°C is in the Danger range`);
-    if (c.wbgtC >= hardWbgt)
-      reasons.push(`WBGT ${c.wbgtC.toFixed(1)}°C is at the cease-activity flag`);
-    return { level: "HARD_STOP", reasons };
+  // Hard stop on any single extreme metric.
+  const hardWetHit = c.wetBulbC >= hardWet;
+  const hardHiHit = c.heatIndexC >= hardHi;
+  const hardWbgtHit = c.wbgtC >= hardWbgt;
+  if (hardWetHit || hardHiHit || hardWbgtHit) {
+    // Technical reasons kept for transparency/debugging; not shown to users directly.
+    const reasons: string[] = [];
+    if (hardWetHit) reasons.push(`wet-bulb ${c.wetBulbC.toFixed(1)}°C at/above the safe ceiling`);
+    if (hardHiHit) reasons.push(`heat index ${c.heatIndexC.toFixed(0)}°C in the Danger range`);
+    if (hardWbgtHit) reasons.push(`WBGT ${c.wbgtC.toFixed(1)}°C at the cease-activity flag`);
+    const humid = hardWetHit || hardWbgtHit;
+    const summary = humid
+      ? `it feels about ${feels}°C and the air is too humid for sweat to cool you safely`
+      : `it feels about ${feels}°C — past the safe limit for being active`;
+    return { level: "HARD_STOP", reasons, summary };
   }
 
-  if (c.wetBulbC >= cautWet || c.heatIndexC >= cautHi || c.wbgtC >= cautWbgt) {
-    if (c.wetBulbC >= cautWet)
-      reasons.push(`wet-bulb ${c.wetBulbC.toFixed(1)}°C is high`);
-    if (c.heatIndexC >= cautHi)
-      reasons.push(`heat index ${c.heatIndexC.toFixed(0)}°C is in the Extreme-Caution range`);
-    if (c.wbgtC >= cautWbgt)
-      reasons.push(`WBGT ${c.wbgtC.toFixed(1)}°C is elevated`);
-    return { level: "CAUTION", reasons };
+  // Caution on any single elevated metric.
+  const cautWetHit = c.wetBulbC >= cautWet;
+  const cautHiHit = c.heatIndexC >= cautHi;
+  const cautWbgtHit = c.wbgtC >= cautWbgt;
+  if (cautWetHit || cautHiHit || cautWbgtHit) {
+    const reasons: string[] = [];
+    if (cautWetHit) reasons.push(`wet-bulb ${c.wetBulbC.toFixed(1)}°C is high`);
+    if (cautHiHit) reasons.push(`heat index ${c.heatIndexC.toFixed(0)}°C is elevated`);
+    if (cautWbgtHit) reasons.push(`WBGT ${c.wbgtC.toFixed(1)}°C is elevated`);
+    const humid = cautWetHit || cautWbgtHit;
+    const summary = humid
+      ? `it still feels about ${feels}°C and the humidity makes it harder for your body to cool down`
+      : `it still feels about ${feels}°C`;
+    return { level: "CAUTION", reasons, summary };
   }
 
-  return { level: "NORMAL", reasons };
+  return { level: "NORMAL", reasons: [], summary: "" };
 }
 
 /** Combine environment + screening into the final, authoritative assessment. */
@@ -124,6 +137,7 @@ export function assessSafety(c: HeatConditions, s: ScreeningFlags): SafetyAssess
     level,
     riskTier: screening.tier,
     environmentalReasons: env.reasons,
+    environmentalSummary: env.summary,
     screeningReasons: screening.reasons,
     reasons: [...env.reasons, ...screening.reasons],
   };

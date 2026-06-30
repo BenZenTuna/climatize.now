@@ -263,6 +263,34 @@ export default function TodayPage() {
         </div>
       </section>
 
+      {/* The rest of the day — climate-aware recovery guidance */}
+      <section className="mt-4 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="flex items-center gap-1.5 text-sm font-semibold text-slate-700">
+            <Thermometer className="h-4 w-4 text-orange-500" /> The rest of your day
+          </h3>
+          <span className={`text-sm font-bold ${heatTextColor(view!.restOfDayPeakFeelsLikeC)}`}>
+            peaks ~{fmtTemp(view!.restOfDayPeakFeelsLikeC, units)}
+          </span>
+        </div>
+        <p className="mt-1 text-sm font-medium text-slate-800">{view!.restOfDay.title}</p>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <div className="rounded-xl border border-sky-100 bg-sky-50/60 p-3">
+            <div className="flex items-center gap-1.5 text-sm font-semibold text-sky-800">
+              <Home className="h-4 w-4" /> If you have AC / cooling
+            </div>
+            <p className="mt-1 text-sm leading-relaxed text-slate-700">{view!.restOfDay.withAC}</p>
+          </div>
+          <div className="rounded-xl border border-amber-100 bg-amber-50/60 p-3">
+            <div className="flex items-center gap-1.5 text-sm font-semibold text-amber-800">
+              <Wind className="h-4 w-4" /> If you don&apos;t
+            </div>
+            <p className="mt-1 text-sm leading-relaxed text-slate-700">{view!.restOfDay.withoutAC}</p>
+          </div>
+        </div>
+        <p className="mt-3 text-xs italic text-slate-500">{view!.restOfDay.recoveryNote}</p>
+      </section>
+
       {/* Why */}
       <section className="mt-4 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
         <h3 className="text-sm font-semibold text-slate-700">Why today looks like this</h3>

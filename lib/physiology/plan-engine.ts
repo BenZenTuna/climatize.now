@@ -83,6 +83,12 @@ function defaultWindow(level: string): string {
     : "the coolest part of the day — early morning is usually safest";
 }
 
+/** "night (around 9pm)" → "night"; a generic phrase for the verbose default labels. */
+function windowShortLabel(window: string): string {
+  const m = window.match(/^(.*?)\s*\(around/i);
+  return m ? m[1].trim() : "planned";
+}
+
 export function generateDayPlan(input: PlanInput): DayPlanResult {
   const { persona, conditions, screening, originBaselineHeatIndexC } = input;
 
@@ -101,10 +107,11 @@ export function generateDayPlan(input: PlanInput): DayPlanResult {
   );
 
   const window = input.safestWindowLabel ?? defaultWindow(safety.level);
+  const windowShort = windowShortLabel(window);
 
   // --- Hard environmental stop: overrides everything ---
   if (safety.level === "HARD_STOP") {
-    return hardStopPlan(input, gapC, adaptationDays, adjustment, window, safety.reasons);
+    return hardStopPlan(input, safety, gapC, adaptationDays, adjustment, window);
   }
 
   // --- Otherwise, build from the ramp, then apply caps ---
@@ -140,12 +147,13 @@ export function generateDayPlan(input: PlanInput): DayPlanResult {
 
   const headline = buildHeadline(safety.level, minutes, intensity, persona);
   const steps = buildSteps(persona, minutes, intensity, safety.level, safety.riskTier, window);
-  const cautions = buildCautions(safety, persona);
+  const cautions = buildCautions(safety, persona, windowShort);
   const rationale = buildRationale({
     persona,
     gapC,
     safetyLevel: safety.level,
-    reasons: safety.reasons,
+    envSummary: safety.environmentalSummary,
+    windowShort,
     feedbackNotes: score?.notes ?? [],
     minutes,
     intensity,
@@ -178,15 +186,25 @@ export function generateDayPlan(input: PlanInput): DayPlanResult {
 
 function hardStopPlan(
   input: PlanInput,
+  safety: ReturnType<typeof assessSafety>,
   gapC: number,
   adaptationDays: number,
   adjustment: Adjustment | null,
   window: string,
-  reasons: string[],
 ): DayPlanResult {
+  const cautions = [
+    `It's not safe to be active in this heat today — ${safety.environmentalSummary}.`,
+  ];
+  if (safety.screeningReasons.length > 0) {
+    cautions.push(
+      `You also flagged: ${safety.screeningReasons.join("; ")}, so taking the day off from the heat matters even more.`,
+    );
+  }
+  cautions.push("Progress doesn't matter more than safety — skipping heat today is the right call.");
+
   return {
     safetyLevel: "HARD_STOP",
-    riskTier: assessSafety(input.conditions, input.screening).riskTier,
+    riskTier: safety.riskTier,
     exposureMinutesTarget: 0,
     intensity: "REST",
     timeWindow: window,
@@ -200,10 +218,7 @@ function hardStopPlan(
     ],
     hydration:
       "Drink to thirst plus a bit more — pale-yellow urine is the target. Include electrolytes if you've been sweating or feel low.",
-    cautions: [
-      `Conditions are unsafe right now: ${reasons.join("; ")}.`,
-      "Progress doesn't matter more than safety — skipping heat today is the right call.",
-    ],
+    cautions,
     recognition: RECOGNITION,
     rationale:
       "The heat-strain numbers are above the safe ceiling, so no amount of goal or progress justifies exposure today. " +
@@ -266,7 +281,7 @@ function buildSteps(
     `Plan your exposure for ${window}.`,
     `Do about ${minutes} minutes of ${activity} — warm enough to start sweating, never to feel unwell.`,
     "Keep water with you and sip throughout.",
-    "Cool down afterwards in shade or indoors, and notice how you feel.",
+    "Cool down actively afterwards — shade or AC, a cool drink, water on your skin — and notice how you feel.",
   ];
 
   if (persona === "LEARN_TO_SWEAT") {
@@ -298,10 +313,13 @@ function buildHydration(intensity: Intensity, level: string): string {
 function buildCautions(
   safety: ReturnType<typeof assessSafety>,
   persona: Persona,
+  windowShort: string,
 ): string[] {
   const cautions: string[] = [];
-  if (safety.environmentalReasons.length > 0) {
-    cautions.push(`Heat note: ${safety.environmentalReasons.join("; ")}.`);
+  if (safety.environmentalSummary) {
+    cautions.push(
+      `Heat note: even in your ${windowShort} window, ${safety.environmentalSummary}.`,
+    );
   }
   if (safety.screeningReasons.length > 0) {
     cautions.push(
@@ -325,7 +343,8 @@ function buildRationale(args: {
   persona: Persona;
   gapC: number;
   safetyLevel: string;
-  reasons: string[];
+  envSummary: string;
+  windowShort: string;
   feedbackNotes: string[];
   minutes: number;
   intensity: Intensity;
@@ -350,13 +369,19 @@ function buildRationale(args: {
   const feedbackPhrase = args.feedbackNotes.length > 0 ? ` ${args.feedbackNotes.join(" ")}` : "";
 
   const safetyPhrase =
-    args.safetyLevel === "CAUTION"
-      ? ` Conditions are on the warm side (${args.reasons.join("; ")}), so today is capped and kept gentle.`
+    args.safetyLevel === "CAUTION" && args.envSummary
+      ? ` Conditions are on the warm side — even in your ${args.windowShort} window, ${args.envSummary} — so today is capped and kept gentle.`
       : "";
 
+  const activityWord =
+    args.intensity === "REST"
+      ? "passive heat exposure"
+      : args.intensity === "MODERATE"
+        ? "light–moderate activity"
+        : "light activity";
   const targetPhrase =
     args.minutes > 0
-      ? ` So today's target is ${args.minutes} minutes of ${args.intensity.toLowerCase()} activity in ${args.window}.`
+      ? ` So today's target is ${args.minutes} minutes of ${activityWord} in ${args.window}.`
       : " So today is a rest-and-recover day.";
 
   return `${gapPhrase} ${personaPhrase}${feedbackPhrase}${safetyPhrase}${targetPhrase}`;

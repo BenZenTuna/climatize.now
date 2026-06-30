@@ -2,7 +2,7 @@
 // fresh online), falling back to the cache when offline. Cross-origin requests
 // (e.g. live weather from Open-Meteo) always go to the network. No personal data
 // is cached beyond the app shell already in your browser.
-const CACHE = "baseheat-v1";
+const CACHE = "climatize-v1";
 
 self.addEventListener("install", () => self.skipWaiting());
 

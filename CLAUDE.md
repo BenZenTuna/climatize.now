@@ -1,6 +1,8 @@
 @AGENTS.md
 
-# BaseHeat — Heat Acclimatization Platform
+# climatize.now — Heat Acclimatization Platform
+
+(Formerly "BaseHeat" — rebranded to **climatize.now** on 2026-06-30; see decisions D28.)
 
 A personalized, daily, weather-driven program that helps people adapt to heat safely.
 See the product brief for the full vision and the non-negotiable physiology/safety rules.
@@ -34,7 +36,8 @@ Never weaken this layer to make a feature work — if something conflicts, log i
 - **Tests: `pnpm test`** (Vitest). The physiology core must stay tested, including the
   hard-stop and screening cases.
 - **No server, no database.** The app is **fully client-side** (re-architecture D21): all
-  state lives in the browser at `localStorage` key `baseheat.state.v1` (`lib/store.ts`),
+  state lives in the browser at `localStorage` key `climatize.state.v1` (`lib/store.ts`;
+  it migrates the legacy `baseheat.state.v1` key on load so the rebrand loses no data),
   the engine runs in the browser, and weather is fetched **browser-direct** from Open-Meteo
   (CORS `*`) — so no personal/health data ever reaches a server. Don't reintroduce
   server-side storage of user data; it's the core privacy promise.

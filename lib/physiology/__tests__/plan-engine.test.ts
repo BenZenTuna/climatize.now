@@ -144,3 +144,36 @@ describe("persona framing", () => {
     expect(p.cautions.join(" ").toLowerCase()).toMatch(/fully acclimat/);
   });
 });
+
+describe("the caution heat note is plain language, not jargon", () => {
+  // A warm-but-not-extreme window: caution via heat index alone (dry).
+  const warmDry: HeatConditions = {
+    tempC: 33, humidityPct: 40, apparentTempC: 34, heatIndexC: 34, wetBulbC: 23, wbgtC: 27,
+  };
+  // A muggy window: caution via wet-bulb (humidity), heat index below its gate.
+  const warmHumid: HeatConditions = {
+    tempC: 30, humidityPct: 80, apparentTempC: 31, heatIndexC: 31, wetBulbC: 26, wbgtC: 27,
+  };
+
+  it("explains the window's feels-like in plain words, with no metric names", () => {
+    const p = generateDayPlan(
+      input({ conditions: warmDry, safestWindowLabel: "evening (around 7pm)" }),
+    );
+    expect(p.safetyLevel).toBe("CAUTION");
+    const note = p.cautions.find((c) => c.startsWith("Heat note"))!;
+    expect(note).toBeTruthy();
+    // Ties the number to the planned window, in plain language…
+    expect(note).toMatch(/evening/);
+    expect(note).toMatch(/feels about 34°C/);
+    // …and never leaks the jargon the owner found confusing.
+    expect(note.toLowerCase()).not.toMatch(/wet-bulb|wbgt|heat index|extreme-caution/);
+    expect(p.rationale.toLowerCase()).not.toMatch(/wet-bulb|wbgt|heat index|extreme-caution/);
+  });
+
+  it("mentions humidity only when humidity is the driver", () => {
+    const dry = generateDayPlan(input({ conditions: warmDry, safestWindowLabel: "evening (around 7pm)" }));
+    const humid = generateDayPlan(input({ conditions: warmHumid, safestWindowLabel: "evening (around 7pm)" }));
+    expect(dry.cautions.find((c) => c.startsWith("Heat note"))!.toLowerCase()).not.toMatch(/humidity/);
+    expect(humid.cautions.find((c) => c.startsWith("Heat note"))!.toLowerCase()).toMatch(/humidity/);
+  });
+});
