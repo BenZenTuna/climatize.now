@@ -12,6 +12,12 @@ const OUTLOOK: Record<string, { label: string; cls: string; dot: string }> = {
   SHELTER: { label: "Shelter day", cls: "bg-red-100 text-red-700", dot: "bg-red-500" },
 };
 
+function extractTime(windowLabel: string | null): string | null {
+  if (!windowLabel) return null;
+  const m = windowLabel.match(/around (\d+(?:am|pm))/i);
+  return m ? `~${m[1]}` : null;
+}
+
 const FELT = ["", "😣", "🙁", "😐", "🙂", "😄"];
 
 function intensityWord(i: Intensity): string {
@@ -122,7 +128,9 @@ function DayRow({ d, units }: { d: ProgramDay; units: Units }) {
           )}
           <span className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${o.cls}`}>
             <span className={`h-1.5 w-1.5 rounded-full ${o.dot}`} />
-            {o.label}
+            {d.outlook === "GOOD" && extractTime(d.windowLabel)
+              ? `Good window · ${extractTime(d.windowLabel)}`
+              : o.label}
           </span>
           <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${open ? "rotate-180" : ""}`} />
         </div>
