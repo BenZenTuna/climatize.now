@@ -281,6 +281,8 @@ export function pickSafestWindow(hours: HourPoint[], tightenC = 0): SafestWindow
 export interface WindowDisplay {
   period: "morning" | "evening";
   timeRange: string;   // e.g. "8–10pm", "5–7am", "~6am"
+  startHour: number;   // first clock hour of the block (0–23)
+  endHour: number;     // last clock hour of the block (0–23)
   feelsLowC: number;   // coolest hour's heat index in the window
   feelsHighC: number;  // warmest hour's heat index in the window (the honest worst case)
   level: SafetyLevel;  // worst safety level across the window — so the verdict matches it
@@ -363,6 +365,8 @@ function blockToDisplay(
   return {
     period,
     timeRange: blockTimeRange(block[0].hour, block[block.length - 1].hour),
+    startHour: block[0].hour,
+    endHour: block[block.length - 1].hour,
     feelsLowC: Math.min(...his),
     feelsHighC: Math.max(...his),
     level: levelFromRank(worst),

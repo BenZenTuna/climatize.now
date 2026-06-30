@@ -32,6 +32,8 @@ describe("findGoodWindows — tight, honest windows", () => {
     const w = findGoodWindows(evening([37, 35, 33, 31, 29, 28]));
     const pm = w.find((x) => x.period === "evening")!;
     expect(pm.timeRange).toBe("8–10pm");
+    expect(pm.startHour).toBe(20);
+    expect(pm.endHour).toBe(22);
     expect(pm.feelsLowC).toBe(28);
     expect(pm.feelsHighC).toBe(31);
     expect(pm.level).toBe("NORMAL");
@@ -42,6 +44,8 @@ describe("findGoodWindows — tight, honest windows", () => {
     const w = findGoodWindows(morning([21, 20, 23, 26, 29, 32, 35]));
     const am = w.find((x) => x.period === "morning")!;
     expect(am.timeRange).toBe("5–8am");
+    expect(am.startHour).toBe(5);
+    expect(am.endHour).toBe(8);
     expect(am.feelsLowC).toBe(20);
     expect(am.feelsHighC).toBe(26);
     expect(am.level).toBe("NORMAL");

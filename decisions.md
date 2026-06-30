@@ -357,3 +357,34 @@ Exercising gently in the coolest, time-capped, hydrated window is the correct wa
 window was not. Thresholds remain pending clinician review (Q1/D18). New tests in
 `lib/weather/__tests__/windows.test.ts` (9) lock the behaviour in (75 tests total; tsc + static
 build clean). Verified live against the real Slivo Pole forecast.
+
+---
+
+## 2026-06-30 — Heat clock (visual day timeline) + program-list mobile layout
+
+**D31 — The Today page gets a visual "heat clock", and the program-list rows are
+restructured for mobile.** Two owner-requested changes from a platform review.
+
+*Heat clock (`app/heat-clock.tsx`).* A bar-per-hour view of today's feels-like curve for the
+waking hours (5am–11pm): **bar height encodes the feels-like heat, colour encodes the safety
+level** (emerald NORMAL / amber CAUTION / red HARD_STOP), past hours are dimmed, "now" is
+marked, and the recommended cool window is **outlined in orange**. Tapping a bar shows that
+hour's detail (defaults to "now") — works on touch and desktop. It makes the core timing
+message visible at a glance: *be active in the cool window, not the midday peak.* The data is a
+new `HeatHour[]` `heatTimeline` on `TodayView`, built by `buildHeatTimeline()` in
+`client-program.ts` from the same forecast already fetched (no extra network); it reuses the
+whole-day `findGoodWindows` to flag which hours are in a window, so the highlight always matches
+the window logic. `WindowDisplay` gained `startHour`/`endHour` (set in `blockToDisplay`) to
+support the highlight. The clock is **display only** — it reads the safety overlay's verdicts,
+never sets them. Placed on Today only for now (future days don't carry hourly data).
+
+*Program-list mobile layout.* The `DayRow` was a single horizontal flex with a `shrink-0` right
+cluster that included a long outlook badge ("Good · 5–9am & ~10pm"); on a phone it starved the
+left column, wrapping the date ("Wed," / "Jul 1") and crushing the summary. Restructured: the
+right side is now a **narrow vertical stack** (max-feels temp · felt emoji · chevron), the date
+is `whitespace-nowrap`, the left column is `flex-1`, and the **outlook badge moved to its own
+line** under the summary showing **only the verdict word** (`o.label`). This intentionally drops
+the window times from the badge — **partially reversing commit c3962a4** ("show time in Good
+window badge") — because the summary already lists each window with its honest temp range
+(D30), so the badge repetition was both redundant and the cause of the overflow. No information
+is lost. 75 tests + tsc + static export all clean.

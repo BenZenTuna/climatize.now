@@ -145,12 +145,23 @@ function computeRestOfDay(mdf: MultiDayForecast): {
 // Today
 // ---------------------------------------------------------------------------
 
+/** One hour of today's heat curve, for the visual "heat clock". */
+export interface HeatHour {
+  hour: number; // 0–23 local
+  heatIndexC: number; // feels-like at that hour
+  level: SafetyLevel; // how safe that hour is (tightened for the user's risk)
+  isNow: boolean; // the current hour
+  isPast: boolean; // earlier than now (dimmed in the UI)
+  inWindow: boolean; // part of a recommended good window today
+}
+
 export interface TodayView {
   programDay: number;
   plan: DayPlanResult;
   current: HeatConditions;
   currentLabel: string;
   goodWindows: WindowDisplay[]; // morning + evening slots with time ranges and temps
+  heatTimeline: HeatHour[]; // today's hour-by-hour heat curve for the heat clock
   windowConditions: HeatConditions;
   peakFeelsLikeC: number; // the day's hottest heat index
   nowSafetyLevel: SafetyLevel; // how dangerous it is RIGHT NOW (vs the safe window)
@@ -158,6 +169,30 @@ export interface TodayView {
   restOfDayPeakFeelsLikeC: number; // peak feels-like over the hours still ahead
   yesterdayTargetMinutes: number | null;
   units: Units;
+}
+
+/**
+ * Today's hour-by-hour heat curve (waking hours 5am–11pm) for the heat clock:
+ * each hour's feels-like + safety level, whether it's now/past, and whether it
+ * falls in one of today's recommended good windows (so the UI can highlight them).
+ */
+function buildHeatTimeline(mdf: MultiDayForecast, tighten: number): HeatHour[] {
+  const today = mdf.days[0];
+  const windowHours = new Set<number>();
+  for (const w of findGoodWindows(today.hours, tighten)) {
+    for (let h = w.startHour; h <= w.endHour; h++) windowHours.add(h);
+  }
+  const nowHour = mdf.now.hour;
+  return today.hours
+    .filter((p) => p.hour >= 5 && p.hour <= 23)
+    .map((p) => ({
+      hour: p.hour,
+      heatIndexC: p.conditions.heatIndexC,
+      level: evaluateEnvironment(p.conditions, tighten).level,
+      isNow: p.hour === nowHour,
+      isPast: p.hour < nowHour,
+      inWindow: windowHours.has(p.hour),
+    }));
 }
 
 export async function buildTodayView(state: AppState): Promise<TodayView> {
@@ -168,6 +203,7 @@ export async function buildTodayView(state: AppState): Promise<TodayView> {
   const today = mdf.days[0];
   const window = pickUpcomingWindow(mdf, tighten);
   const todayGoodWindows = findUpcomingGoodWindows(mdf, tighten);
+  const heatTimeline = buildHeatTimeline(mdf, tighten);
   const restOfDay = computeRestOfDay(mdf);
 
   // The day's PEAK heat is the real adaptation challenge (the gap); exposure is
@@ -197,6 +233,7 @@ export async function buildTodayView(state: AppState): Promise<TodayView> {
     current: mdf.now.conditions,
     currentLabel: state.current.label,
     goodWindows: todayGoodWindows,
+    heatTimeline,
     windowConditions: window.point.conditions,
     peakFeelsLikeC: dayPeakHeatIndexC,
     nowSafetyLevel: evaluateEnvironment(mdf.now.conditions, tighten).level,

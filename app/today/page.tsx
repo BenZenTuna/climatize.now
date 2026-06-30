@@ -7,6 +7,7 @@ import { useAppState } from "@/lib/store";
 import { buildTodayView, buildProgramView, currentProgramDay, type TodayView, type ProgramView } from "@/lib/client-program";
 import { ProgramSection } from "@/app/program-list";
 import { ProgressTrends } from "@/app/progress-trends";
+import { HeatClock } from "@/app/heat-clock";
 import { Brand } from "@/app/brand";
 import {
   Activity,
@@ -231,6 +232,8 @@ export default function TodayPage() {
           </ul>
         )}
       </section>
+
+      <HeatClock timeline={view!.heatTimeline} units={units} />
 
       {plan.adjustmentFromYesterday && view!.yesterdayTargetMinutes != null && (
         <div className="mt-4 flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white p-3 text-sm shadow-sm">

@@ -93,11 +93,11 @@ function DayRow({ d, units }: { d: ProgramDay; units: Units }) {
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="flex w-full items-center justify-between gap-3 p-3 text-left"
+        className="flex w-full items-start justify-between gap-2 p-3 text-left"
       >
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-slate-900">{d.dateLabel}</span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="whitespace-nowrap font-semibold text-slate-900">{d.dateLabel}</span>
             {d.state === "FUTURE" && (
               <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-400">
                 projected
@@ -116,13 +116,14 @@ function DayRow({ d, units }: { d: ProgramDay; units: Units }) {
               </span>
             )}
           </div>
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          {d.state === "PAST" && d.feltOverall ? (
-            <span className="text-lg" title="how you felt">
-              {FELT[d.feltOverall]}
+          <div className="mt-1.5">
+            <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${o.cls}`}>
+              <span className={`h-1.5 w-1.5 rounded-full ${o.dot}`} />
+              {o.label}
             </span>
-          ) : null}
+          </div>
+        </div>
+        <div className="flex shrink-0 flex-col items-end gap-1.5 pl-1">
           {d.feelsLikeC != null && (
             <span className="flex flex-col items-end leading-none" title="the day's maximum feels-like temperature">
               <span className="text-[9px] font-medium uppercase tracking-wide text-slate-400">max feels</span>
@@ -131,12 +132,11 @@ function DayRow({ d, units }: { d: ProgramDay; units: Units }) {
               </span>
             </span>
           )}
-          <span className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${o.cls}`}>
-            <span className={`h-1.5 w-1.5 rounded-full ${o.dot}`} />
-            {d.outlook === "GOOD" && d.goodWindows.length > 0
-              ? `Good · ${d.goodWindows.map((w) => w.timeRange).join(" & ")}`
-              : o.label}
-          </span>
+          {d.state === "PAST" && d.feltOverall ? (
+            <span className="text-lg leading-none" title="how you felt">
+              {FELT[d.feltOverall]}
+            </span>
+          ) : null}
           <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${open ? "rotate-180" : ""}`} />
         </div>
       </button>

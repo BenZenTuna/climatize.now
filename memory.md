@@ -5,6 +5,29 @@ Newest entry at the top.
 
 ---
 
+## 2026-06-30 — Heat clock (visual day timeline) + program-list mobile fix
+
+Owner picked suggestion #3 (from a platform-review brainstorm) and reported a mobile layout
+bug on the program list. Both done (decisions D31); 75 tests + tsc + static build clean.
+- **Heat clock** — new `app/heat-clock.tsx` (`HeatClock`) on the Today page, just under the
+  safety/window card. A bar-per-hour view of today's feels-like curve (waking hours 5am–11pm):
+  **bar height = feels-like, colour = safety level** (emerald/amber/red), the recommended cool
+  window is **outlined in orange**, past hours dimmed, "now" marked. Tap any bar → detail line
+  ("3pm · feels 37°C · Caution · your window"); defaults to now. Data: new
+  `buildHeatTimeline()` in `client-program.ts` adds `heatTimeline: HeatHour[]` to `TodayView`
+  (uses the whole-day `findGoodWindows` to mark window hours). Added `startHour`/`endHour` to
+  `WindowDisplay` (set in `blockToDisplay`) so the clock can highlight window hours; tests
+  extended. Verified live vs Slivo Pole: clean mountain shape — emerald mornings (5–8am window),
+  red HARD-STOP peak 2–3pm, amber cooling evening, evening window highlighted.
+- **Program-list mobile fix** — `DayRow` rows were cramped on phones: the date wrapped
+  ("Wed," / "Jul 1"), the summary squeezed into a sliver, and the long outlook badge
+  ("Good · 5–9am & ~10pm") hogged the row. Fix: the right cluster is now a **narrow vertical
+  stack** (max-feels temp, felt emoji, chevron); the outlook badge moved to **its own line**
+  under the summary and shows **just the verdict word** (`o.label`) — dropping the window times
+  it duplicated from the summary (this reverses the badge-times part of commit c3962a4; the
+  times still live in the summary, now with honest ranges). Date is `whitespace-nowrap`; left
+  column is `flex-1`.
+
 ## 2026-06-30 — Honest "good window" detection (tight windows + real temp ranges)
 
 Owner unhappy with the windows on Today + the program list (screenshots): every day showed
