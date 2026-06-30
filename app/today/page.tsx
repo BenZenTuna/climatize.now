@@ -178,25 +178,32 @@ export default function TodayPage() {
         </div>
         <p className="mt-1 text-sm text-slate-700">{safety.sub}</p>
 
-        {plan.exposureMinutesTarget > 0 && (
+        {plan.exposureMinutesTarget > 0 && view!.goodWindows.length > 0 && (
           <div className="mt-3 rounded-xl border border-white/70 bg-white/70 px-3 py-2.5">
             <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-              {view!.windowLabels.length > 1 ? "Good windows to be outside" : "Best window to be outside"}
+              {view!.goodWindows.length > 1 ? "Good windows to be outside" : "Best window to be outside"}
             </div>
-            <div className="mt-1.5 flex flex-col gap-1.5">
-              {view!.windowLabels.map((label) => {
-                const isNight = /night|evening/i.test(label);
-                return (
-                  <div key={label} className="flex items-center gap-2">
-                    <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${safety.chip}`}>
-                      {isNight ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
-                    </span>
-                    <span className="text-base font-bold leading-tight text-slate-900 first-letter:uppercase">
-                      {label}
-                    </span>
+            <div className="mt-2 flex flex-col gap-2">
+              {view!.goodWindows.map((w) => (
+                <div key={w.period} className="flex items-center gap-2.5">
+                  <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${safety.chip}`}>
+                    {w.period === "evening" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+                  </span>
+                  <div className="min-w-0">
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-base font-bold text-slate-900">
+                        {w.period === "morning" ? "Morning" : "Evening"} · {w.timeRange}
+                      </span>
+                      <span className={`text-sm font-semibold ${heatTextColor(w.feelsLikeC)}`}>
+                        {fmtTemp(w.feelsLikeC, units)}
+                      </span>
+                    </div>
+                    {w.isEstimate && (
+                      <div className="text-xs text-slate-400">Estimated — forecast not yet available</div>
+                    )}
                   </div>
-                );
-              })}
+                </div>
+              ))}
             </div>
           </div>
         )}

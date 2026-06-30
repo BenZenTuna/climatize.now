@@ -12,11 +12,6 @@ const OUTLOOK: Record<string, { label: string; cls: string; dot: string }> = {
   SHELTER: { label: "Shelter day", cls: "bg-red-100 text-red-700", dot: "bg-red-500" },
 };
 
-function extractTime(windowLabel: string | null): string | null {
-  if (!windowLabel) return null;
-  const m = windowLabel.match(/around (\d+(?:am|pm))/i);
-  return m ? `~${m[1]}` : null;
-}
 
 const FELT = ["", "😣", "🙁", "😐", "🙂", "😄"];
 
@@ -112,8 +107,13 @@ function DayRow({ d, units }: { d: ProgramDay; units: Units }) {
           </div>
           <div className="mt-0.5 text-sm text-slate-600">
             {summary}
-            {d.windowLabels.length > 0 && d.minutes > 0 && (
-              <span className="text-slate-400"> · {d.windowLabels.join(" & ")}</span>
+            {d.goodWindows.length > 0 && d.minutes > 0 && (
+              <span className="text-slate-400">
+                {" · "}
+                {d.goodWindows
+                  .map((w) => `${w.period} (${w.timeRange} · ${fmtTemp(w.feelsLikeC, units)})${w.isEstimate ? " est." : ""}`)
+                  .join(" & ")}
+              </span>
             )}
           </div>
         </div>
@@ -130,8 +130,8 @@ function DayRow({ d, units }: { d: ProgramDay; units: Units }) {
           )}
           <span className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${o.cls}`}>
             <span className={`h-1.5 w-1.5 rounded-full ${o.dot}`} />
-            {d.outlook === "GOOD" && d.windowLabels.length > 0
-              ? `Good window · ${d.windowLabels.map(extractTime).filter(Boolean).join(" & ")}`
+            {d.outlook === "GOOD" && d.goodWindows.length > 0
+              ? `Good · ${d.goodWindows.map((w) => w.timeRange).join(" & ")}`
               : o.label}
           </span>
           <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${open ? "rotate-180" : ""}`} />

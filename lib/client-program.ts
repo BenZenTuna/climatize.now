@@ -6,10 +6,11 @@
 import {
   fetchMultiDayForecast,
   pickSafestWindow,
-  pickWindowPair,
+  findGoodWindows,
   ORIGIN_BAND_HEAT_INDEX_C,
 } from "./weather/open-meteo";
-import type { MultiDayForecast, SafestWindow } from "./weather/open-meteo";
+import type { MultiDayForecast, SafestWindow, WindowDisplay } from "./weather/open-meteo";
+export type { WindowDisplay } from "./weather/open-meteo";
 import { generateDayPlan } from "./physiology/plan-engine";
 import { assessScreening, evaluateEnvironment } from "./physiology/safety";
 import { restOfDayGuidance, type RestOfDayGuidance } from "./physiology/recovery";
@@ -103,12 +104,12 @@ function pickUpcomingWindow(mdf: MultiDayForecast, tighten: number): SafestWindo
   return pickSafestWindow(pool, tighten);
 }
 
-function pickUpcomingWindowPair(mdf: MultiDayForecast, tighten: number): SafestWindow[] {
+function findUpcomingGoodWindows(mdf: MultiDayForecast, tighten: number): WindowDisplay[] {
   const today = mdf.days[0];
   let pool = today.hours.filter((h) => h.time >= mdf.now.time);
   if (pool.length < 3 && mdf.days[1]) pool = [...pool, ...mdf.days[1].hours];
   if (pool.length === 0) pool = today.hours;
-  return pickWindowPair(pool, tighten);
+  return findGoodWindows(pool, tighten);
 }
 
 function labelHour(hour: number): string {
@@ -149,8 +150,7 @@ export interface TodayView {
   plan: DayPlanResult;
   current: HeatConditions;
   currentLabel: string;
-  windowLabel: string;
-  windowLabels: string[]; // morning + evening pair (up to 2) for display
+  goodWindows: WindowDisplay[]; // morning + evening slots with time ranges and temps
   windowConditions: HeatConditions;
   peakFeelsLikeC: number; // the day's hottest heat index
   nowSafetyLevel: SafetyLevel; // how dangerous it is RIGHT NOW (vs the safe window)
@@ -167,7 +167,7 @@ export async function buildTodayView(state: AppState): Promise<TodayView> {
   const mdf = await fetchMultiDayForecast(state.current.lat, state.current.lon, 2, tighten);
   const today = mdf.days[0];
   const window = pickUpcomingWindow(mdf, tighten);
-  const windowPair = pickUpcomingWindowPair(mdf, tighten);
+  const todayGoodWindows = findUpcomingGoodWindows(mdf, tighten);
   const restOfDay = computeRestOfDay(mdf);
 
   // The day's PEAK heat is the real adaptation challenge (the gap); exposure is
@@ -196,8 +196,7 @@ export async function buildTodayView(state: AppState): Promise<TodayView> {
     plan,
     current: mdf.now.conditions,
     currentLabel: state.current.label,
-    windowLabel: window.label,
-    windowLabels: windowPair.map((w) => w.label),
+    goodWindows: todayGoodWindows,
     windowConditions: window.point.conditions,
     peakFeelsLikeC: dayPeakHeatIndexC,
     nowSafetyLevel: evaluateEnvironment(mdf.now.conditions, tighten).level,
@@ -232,8 +231,7 @@ export interface ProgramDay {
   intensity: Intensity;
   safetyLevel: SafetyLevel;
   outlook: Outlook;
-  windowLabel: string | null;
-  windowLabels: string[]; // morning + evening pair (up to 2) for display
+  goodWindows: WindowDisplay[]; // morning + evening slots with time ranges and temps
   feelsLikeC: number | null;
   beyondForecast: boolean;
   completed: boolean | null;
@@ -313,8 +311,7 @@ export async function buildProgramView(state: AppState): Promise<ProgramView> {
         intensity: h?.intensity ?? "LIGHT",
         safetyLevel: level,
         outlook: outlookFrom(level),
-        windowLabel: null,
-        windowLabels: [],
+        goodWindows: [],
         feelsLikeC: h?.feelsLikeC ?? null,
         beyondForecast: false,
         completed: log?.completedExposure ?? null,
@@ -330,7 +327,10 @@ export async function buildProgramView(state: AppState): Promise<ProgramView> {
     // For "today", recommend the upcoming window (matches the Today screen); future
     // days use their whole-day best window.
     const dayWindow = offset === 0 ? pickUpcomingWindow(forecast, tighten) : fday.safeWindow;
-    const dayWindowPair = offset === 0 ? pickUpcomingWindowPair(forecast, tighten) : fday.safeWindows;
+    const rawGoodWindows = offset === 0 ? findUpcomingGoodWindows(forecast, tighten) : fday.goodWindows;
+    const dayGoodWindows = beyondForecast
+      ? rawGoodWindows.map((w) => ({ ...w, isEstimate: true }))
+      : rawGoodWindows;
     const cond = dayWindow.point.conditions;
     const projectedAdaptation = Math.min(60, todayAdaptation + offset * PROJECTED_DAILY_GAIN);
 
@@ -352,8 +352,7 @@ export async function buildProgramView(state: AppState): Promise<ProgramView> {
       intensity: plan.intensity,
       safetyLevel: plan.safetyLevel,
       outlook: outlookFrom(evaluateEnvironment(cond, tighten).level),
-      windowLabel: dayWindow.label,
-      windowLabels: dayWindowPair.map((w) => w.label),
+      goodWindows: dayGoodWindows,
       feelsLikeC: fday.peak.heatIndexC, // show the day's real heat, not the cool window
       beyondForecast,
       completed: null,

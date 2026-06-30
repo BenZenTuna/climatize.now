@@ -173,8 +173,8 @@ export async function fetchForecast(
 export interface DayForecast {
   date: string; // YYYY-MM-DD (local)
   hours: HourPoint[];
-  safeWindow: SafestWindow; // safest window that day (primary, used by plan engine)
-  safeWindows: SafestWindow[]; // morning + evening pair for display (1 or 2 entries)
+  safeWindow: SafestWindow; // primary window for plan engine
+  goodWindows: WindowDisplay[]; // morning + evening slots for display
   peak: HeatConditions; // hottest hour that day (drives the outlook flag)
 }
 
@@ -242,7 +242,7 @@ export async function fetchMultiDayForecast(
       const peak = hours.reduce((a, b) =>
         b.conditions.heatIndexC > a.conditions.heatIndexC ? b : a,
       ).conditions;
-      return { date, hours, safeWindow: pickSafestWindow(hours, tightenC), safeWindows: pickWindowPair(hours, tightenC), peak };
+      return { date, hours, safeWindow: pickSafestWindow(hours, tightenC), goodWindows: findGoodWindows(hours, tightenC), peak };
     });
 
   return { timezone: data.timezone, now, days: forecastDays };
@@ -276,24 +276,86 @@ export function pickSafestWindow(hours: HourPoint[], tightenC = 0): SafestWindow
   return { label: windowLabel(best.hour), point: best };
 }
 
+/** A good-conditions time slot for display: period, time range, and temperature. */
+export interface WindowDisplay {
+  period: "morning" | "evening";
+  timeRange: string;   // e.g. "6–9am", "7–10pm", "~6am"
+  feelsLikeC: number;  // heat index at the coolest hour in the window
+  isEstimate: boolean; // true when based on extrapolated (beyond-forecast) data
+}
+
+function fmtHour(h: number): string {
+  const period = h < 12 ? "am" : "pm";
+  const hr = h % 12 === 0 ? 12 : h % 12;
+  return `${hr}${period}`;
+}
+
+function blockTimeRange(startHour: number, endHour: number): string {
+  if (startHour === endHour) return `~${fmtHour(startHour)}`;
+  const startP = startHour < 12 ? "am" : "pm";
+  const endP = endHour < 12 ? "am" : "pm";
+  const startN = startHour % 12 === 0 ? 12 : startHour % 12;
+  const endN = endHour % 12 === 0 ? 12 : endHour % 12;
+  return startP === endP
+    ? `${startN}–${endN}${endP}`       // "6–9am"
+    : `${startN}${startP}–${endN}${endP}`; // "11am–1pm" (edge case)
+}
+
 /**
- * Pick the best window from the morning (5–11) and the evening/night (17–22)
- * independently. Only includes a slot if it is not HARD_STOP. Returns in time
- * order (morning first, evening second) so UI can render them chronologically.
+ * Find the morning (5–11h) and evening (17–22h) comfortable windows from actual
+ * hourly forecast data. For each slot, finds the contiguous block of viable
+ * (non-HARD_STOP) hours, picks the block with the best conditions, and records
+ * the block's time span and the coolest hour's feels-like temperature.
  */
-export function pickWindowPair(hours: HourPoint[], tightenC = 0): SafestWindow[] {
+export function findGoodWindows(hours: HourPoint[], tightenC = 0, isEstimate = false): WindowDisplay[] {
   const rank = (l: string) => (l === "NORMAL" ? 0 : l === "CAUTION" ? 1 : 2);
-  function bestOf(pool: HourPoint[]): SafestWindow | null {
+
+  function findBlock(pool: HourPoint[], period: "morning" | "evening"): WindowDisplay | null {
     if (!pool.length) return null;
-    const rated = pool
-      .map((p) => ({ p, level: evaluateEnvironment(p.conditions, tightenC).level }))
-      .sort((a, b) => rank(a.level) - rank(b.level) || a.p.conditions.heatIndexC - b.p.conditions.heatIndexC);
-    if (rated[0].level === "HARD_STOP") return null;
-    return { label: windowLabel(rated[0].p.hour), point: rated[0].p };
+    const sorted = [...pool].sort((a, b) => a.hour - b.hour);
+    const rated = sorted.map((h) => ({
+      h,
+      r: rank(evaluateEnvironment(h.conditions, tightenC).level),
+    }));
+
+    // Build contiguous viable (non-HARD_STOP) blocks
+    const blocks: (typeof rated)[] = [];
+    let cur: typeof rated = [];
+    for (const item of rated) {
+      if (item.r < 2) {
+        cur.push(item);
+      } else {
+        if (cur.length) { blocks.push(cur); cur = []; }
+      }
+    }
+    if (cur.length) blocks.push(cur);
+    if (!blocks.length) return null;
+
+    // Choose the block with the lowest average safety rank, then lowest min heat index
+    const best = blocks.reduce((a, b) => {
+      const avgA = a.reduce((s, x) => s + x.r, 0) / a.length;
+      const avgB = b.reduce((s, x) => s + x.r, 0) / b.length;
+      if (Math.abs(avgA - avgB) > 0.01) return avgA < avgB ? a : b;
+      const minA = Math.min(...a.map((x) => x.h.conditions.heatIndexC));
+      const minB = Math.min(...b.map((x) => x.h.conditions.heatIndexC));
+      return minA <= minB ? a : b;
+    });
+
+    const rep = best.reduce((a, b) =>
+      b.h.conditions.heatIndexC < a.h.conditions.heatIndexC ? b : a,
+    );
+
+    return {
+      period,
+      timeRange: blockTimeRange(best[0].h.hour, best[best.length - 1].h.hour),
+      feelsLikeC: rep.h.conditions.heatIndexC,
+      isEstimate,
+    };
   }
-  const am = bestOf(hours.filter((h) => h.hour >= 5 && h.hour <= 11));
-  const pm = bestOf(hours.filter((h) => h.hour >= 17 && h.hour <= 22));
-  return [am, pm].filter((w): w is SafestWindow => w !== null);
+
+  const am = findBlock(hours.filter((h) => h.hour >= 5 && h.hour <= 11), "morning");
+  const pm = findBlock(hours.filter((h) => h.hour >= 17 && h.hour <= 22), "evening");
+  return [am, pm].filter((w): w is WindowDisplay => w !== null);
 }
 
 function to12h(h: number): string {
