@@ -124,8 +124,8 @@ function DayRow({ d, units }: { d: ProgramDay; units: Units }) {
             </span>
           ) : null}
           {d.feelsLikeC != null && (
-            <span className="flex flex-col items-end leading-none" title="the day's peak feels-like temperature">
-              <span className="text-[9px] font-medium uppercase tracking-wide text-slate-400">peak</span>
+            <span className="flex flex-col items-end leading-none" title="the day's maximum feels-like temperature">
+              <span className="text-[9px] font-medium uppercase tracking-wide text-slate-400">max feels</span>
               <span className={`mt-0.5 text-xs font-semibold ${heatTextColor(d.feelsLikeC)}`}>
                 {fmtTemp(d.feelsLikeC, units)}
               </span>
