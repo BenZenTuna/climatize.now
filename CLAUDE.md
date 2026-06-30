@@ -41,8 +41,9 @@ Never weaken this layer to make a feature work — if something conflicts, log i
   the engine runs in the browser, and weather is fetched **browser-direct** from Open-Meteo
   (CORS `*`) — so no personal/health data ever reaches a server. Don't reintroduce
   server-side storage of user data; it's the core privacy promise.
-- **Build = static export.** `next.config.ts` has `output: "export"`; `pnpm build` emits
-  `out/` for any CDN. (So `next start` isn't used — serve `out/` statically.)
+- **Build = static export.** `next.config.ts` has `output: "export"` + `distDir: "dist"`;
+  `pnpm build` emits `dist/` for any CDN. (So `next start` isn't used — serve `dist/` statically.
+  `distDir: "dist"` is required for Coolify deployment which expects `/app/dist`.)
 - **Weather: Open-Meteo** (no API key). `lib/weather/open-meteo.ts` — geocoding + single &
   multi-day forecast, called from the browser.
 - **Next.js 16** — has breaking changes vs older versions (see `@AGENTS.md`).
