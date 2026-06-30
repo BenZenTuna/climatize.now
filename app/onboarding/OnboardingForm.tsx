@@ -58,7 +58,7 @@ export default function OnboardingForm() {
       const persona = fd.get("persona") as Persona | null;
       if (!persona) return setError("Please choose a goal to continue.");
       if (!cb("acknowledge"))
-        return setError("Please acknowledge that this is wellness guidance, not medical advice.");
+        return setError("Please read and accept the disclaimer before continuing.");
 
       const current =
         currentSel ?? (currentText.trim() ? await geocode(currentText).catch(() => null) : null);
@@ -262,12 +262,32 @@ export default function OnboardingForm() {
         </div>
       </fieldset>
 
-      {/* Acknowledgement */}
-      <label className="flex items-start gap-2 rounded-2xl border border-slate-100 bg-white p-4 text-sm text-slate-700 shadow-sm">
-        <input type="checkbox" name="acknowledge" className="mt-0.5 h-4 w-4 accent-orange-500" />
+      {/* Disclaimer + Acknowledgement */}
+      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900 space-y-1.5">
+        <p className="font-semibold text-amber-800 uppercase tracking-wide text-[10px]">Important — please read</p>
+        <p>
+          climatize.now provides <strong>AI-generated wellness guidance only</strong>. It is{" "}
+          <strong>not a substitute for professional medical advice, diagnosis, or treatment.</strong>
+        </p>
+        <p>
+          By using this platform you accept full responsibility for your own health and safety. All
+          recommendations are used entirely <strong>at your own risk.</strong> If you have any
+          medical condition, consult a qualified healthcare professional before following any heat
+          acclimatization programme.
+        </p>
+        <p>
+          The creators of climatize.now accept <strong>no liability</strong> for any injury, illness,
+          or adverse health outcome arising from use of these recommendations.
+        </p>
+      </div>
+
+      <label className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-700 shadow-sm cursor-pointer">
+        <input type="checkbox" name="acknowledge" className="mt-0.5 h-4 w-4 shrink-0 accent-orange-500" />
         <span>
-          I understand this is <strong>wellness guidance, not medical advice</strong>, and that I
-          should stop and seek help if I feel unwell.
+          I have read the disclaimer above. I understand this is{" "}
+          <strong>AI-generated wellness guidance, not professional medical advice</strong>, and that
+          I use all recommendations <strong>at my own risk</strong>. I will stop and seek medical
+          help immediately if I feel unwell.
         </span>
       </label>
 
