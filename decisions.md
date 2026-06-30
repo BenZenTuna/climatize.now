@@ -313,3 +313,47 @@ feeds the rationale and the hard-stop cautions. Removed the inaccurate "Extreme-
 wording and an adjacent contradictory phrase ("X minutes of *rest* activity" → "passive heat
 exposure"). Thresholds, tiers, doses and the safety gating are all unchanged — this is copy
 only. Tests in `plan-engine.test.ts` lock in that the note stays jargon-free (66 tests pass).
+
+---
+
+## 2026-06-30 — "Good window" detection made tight, honest, and consistent
+
+**D30 — The good-window picker hugs the genuinely-cool hours, shows an honest temp
+range, and the safety verdict is anchored to that window's warm edge.** The previous
+`findGoodWindows` defined a "viable" hour as merely *not a hard stop* (heat index < 39.4°C),
+so on any normal summer day the whole morning (5–11) and evening (17–22) filter range formed
+one block — the window never narrowed and always read as the fixed "5–11am / 5–10pm". It then
+displayed the **single coolest hour's** temperature (e.g. 10pm's 29°C for a 5–10pm window),
+which understated a multi-hour window so badly it looked like a made-up number, and the green
+"go gently" verdict was computed at that same lone coolest hour — so it disagreed with the
+wide window the card displayed. (Owner reported all three on a Slivo Pole heatwave day.)
+
+New model (in the weather/orchestration layer; the safety overlay and the tested physiology
+engine are NOT touched, and no thresholds change):
+- A `coolBlock` anchors on the period's coolest non-hard-stop hour and grows over consecutive
+  clock hours while each stays within `WINDOW_COMFORT_BAND_C` (3°C, new named constant) of that
+  coolest hour, OR below the comfortable floor (`HEAT_INDEX_BANDS_C.CAUTION`, 26.7°C). Effect:
+  **hot days narrow to the real cool stretch** (e.g. 9–10pm), while **genuinely mild days keep
+  the whole comfortable period** (the floor prevents needless tightness). `WindowDisplay` now
+  carries `feelsLowC`/`feelsHighC` (the block's coolest→warmest heat index — an honest range)
+  and `level` (the worst safety level across the block).
+- `pickWindowAnchor` replaces `pickSafestWindow` as the plan's anchor (today via
+  `pickUpcomingWindow`, future days via `fetchMultiDayForecast`). It evaluates the plan at the
+  best window's **warm edge** — the hottest moment one would actually be active in the
+  recommended window — so the verdict and dose are honest to the window rather than to a
+  cherry-picked coolest hour. Green now appears only when the *entire* recommended window is in
+  the safe band; otherwise it correctly shows Caution. This is slightly more conservative on hot
+  days (intended). It falls back to `pickSafestWindow` (single safest hour) when every candidate
+  hour is a hard stop, so the engine can still produce a hard-stop day.
+- Display: `fmtTempRange()` (`lib/units.ts`) renders the range and collapses to one value when
+  the ends round equal; the Today card and the program-list summary show it, coloured by the
+  warm edge. The program-list day temperature is now explicitly labelled **"peak"**.
+
+**Why it's scientifically OK to stay green sometimes:** the verdict describes the *cool
+exposure window* (e.g. light activity at ~30°C feels-like late evening), not the day's peak
+(which the app still steers away from and contrasts in the "it's very hot right now…" note).
+Exercising gently in the coolest, time-capped, hydrated window is the correct way to acclimatize
+— so green for an honestly-shown cool window is defensible; green next to a mislabelled hot
+window was not. Thresholds remain pending clinician review (Q1/D18). New tests in
+`lib/weather/__tests__/windows.test.ts` (9) lock the behaviour in (75 tests total; tsc + static
+build clean). Verified live against the real Slivo Pole forecast.

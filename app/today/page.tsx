@@ -23,7 +23,7 @@ import {
   Thermometer,
   Wind,
 } from "@/app/icons";
-import { fmtTemp, heatTextColor, PERSONA_LABEL } from "@/lib/units";
+import { fmtTemp, fmtTempRange, heatTextColor, PERSONA_LABEL } from "@/lib/units";
 import type { SafetyLevel } from "@/lib/physiology/types";
 
 const SAFETY: Record<SafetyLevel, { card: string; chip: string; dot: string; label: string; sub: string }> = {
@@ -194,8 +194,8 @@ export default function TodayPage() {
                       <span className="text-base font-bold text-slate-900">
                         {w.period === "morning" ? "Morning" : "Evening"} · {w.timeRange}
                       </span>
-                      <span className={`text-sm font-semibold ${heatTextColor(w.feelsLikeC)}`}>
-                        {fmtTemp(w.feelsLikeC, units)}
+                      <span className={`text-sm font-semibold ${heatTextColor(w.feelsHighC)}`}>
+                        {fmtTempRange(w.feelsLowC, w.feelsHighC, units)}
                       </span>
                     </div>
                     {w.isEstimate && (

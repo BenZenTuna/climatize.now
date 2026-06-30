@@ -5,6 +5,42 @@ Newest entry at the top.
 
 ---
 
+## 2026-06-30 — Honest "good window" detection (tight windows + real temp ranges)
+
+Owner unhappy with the windows on Today + the program list (screenshots): every day showed
+the SAME fixed "5–11am / 5–10pm" spans with one understated temp (e.g. "5–10pm · 29°C" on a
+38°C day), and "Good to go — gently" was green on a heatwave day. Root causes (all confirmed):
+- **Sonnet's `findGoodWindows` never narrowed.** Its "viable block" = *not HARD_STOP*, but
+  HARD_STOP is heat-index 39.4°C, so the whole 5–11/17–22 filter range was always one block →
+  back to fixed spans.
+- **Temp was the single coolest hour** in the block (`rep`) → 10pm's value shown for a 5–10pm
+  window (or 5am's for a morning) → grossly understated, looked "unrealistic / estimated"
+  (they're real hourly-forecast values, just cherry-picked).
+- **Green verdict came from the single coolest hour too** (`plan.safetyLevel` via the
+  coolest-upcoming-hour anchor), so it disagreed with the wide window shown.
+
+Fix (decisions D30) — orchestration + display only; safety overlay & tested engine untouched:
+- Rewrote `findGoodWindows` (`lib/weather/open-meteo.ts`): a `coolBlock` anchors on the
+  period's coolest non-hard-stop hour and grows over consecutive hours within
+  `WINDOW_COMFORT_BAND_C` (3°C, new constant) of it — or below the comfortable floor
+  (`HEAT_INDEX_BANDS_C.CAUTION`) on a mild day. So hot days → tight windows (9–10pm), mild days
+  → the whole comfortable period stays. `WindowDisplay` now carries **`feelsLowC`/`feelsHighC`
+  (honest range)** + **`level`** (worst level across the block) instead of one `feelsLikeC`.
+- New `pickWindowAnchor` (replaces `pickSafestWindow` for today via `pickUpcomingWindow` and
+  for future days via `fetchMultiDayForecast`): anchors the plan on the best window's **warm
+  edge** (hottest moment you'd actually be active), label from the window's coolest sweet spot.
+  Falls back to `pickSafestWindow` when every hour is a hard stop. → verdict & dose now match
+  the window; green only when the *whole* cool window is genuinely safe (slightly more
+  conservative on hot days, by design). No threshold changes.
+- Display: `fmtTempRange()` in `lib/units.ts` (collapses when ends round equal); Today card &
+  program-list summary show the range, colored by the warm edge; program-list day temp now
+  **labelled "peak"** (answers "what is this temp?").
+- New `lib/weather/__tests__/windows.test.ts` (9 tests): tight/mild windows, honest range,
+  CAUTION-not-green when the window's still hot, no-window-when-all-hard-stop, warm-edge anchor.
+- Verified live vs the real Slivo Pole heatwave: today evening now "9–10pm · 29–31°C [NORMAL]"
+  (was "5–10pm · 29°C"); Jul 1 "morning 5–9am 23–26°C & evening ~10pm 25°C". 75 tests + tsc +
+  static build all clean.
+
 ## 2026-06-30 — Plain-language heat note (de-jargoned the caution copy)
 
 Owner couldn't understand the caution "Heat note" line ("wet-bulb 23.3°C is high; heat index

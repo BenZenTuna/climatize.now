@@ -66,6 +66,13 @@ export const ELEVATED_RISK_TIGHTEN_C = 2.0;
 // during heatwaves; Jay et al. on the air-temperature limits of fan-based cooling.
 export const FAN_INEFFECTIVE_AIR_TEMP_C = 35;
 
+// When picking the "good window to be outside", an hour counts as part of the cool
+// block if its heat index is within this many °C of the period's COOLEST hour — so
+// the window hugs the genuinely cooler stretch (e.g. 8–10pm) instead of the whole
+// morning/evening. On a genuinely cool day the comfortable floor (HEAT_INDEX_BANDS_C
+// .CAUTION) keeps the window from being needlessly tight.
+export const WINDOW_COMFORT_BAND_C = 3;
+
 // ---------------------------------------------------------------------------
 // Adaptation program parameters.
 // Heat acclimatization: ~7–14 days, most gains in week one; the daily stimulus is

@@ -5,7 +5,7 @@
 
 import {
   fetchMultiDayForecast,
-  pickSafestWindow,
+  pickWindowAnchor,
   findGoodWindows,
   ORIGIN_BAND_HEAT_INDEX_C,
 } from "./weather/open-meteo";
@@ -101,7 +101,7 @@ function pickUpcomingWindow(mdf: MultiDayForecast, tighten: number): SafestWindo
   let pool = today.hours.filter((h) => h.time >= mdf.now.time);
   if (pool.length < 3 && mdf.days[1]) pool = [...pool, ...mdf.days[1].hours];
   if (pool.length === 0) pool = today.hours;
-  return pickSafestWindow(pool, tighten);
+  return pickWindowAnchor(pool, tighten);
 }
 
 function findUpcomingGoodWindows(mdf: MultiDayForecast, tighten: number): WindowDisplay[] {

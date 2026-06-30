@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { fmtTemp, heatTextColor } from "@/lib/units";
+import { fmtTemp, fmtTempRange, heatTextColor } from "@/lib/units";
 import { ChevronDown, Droplet, Sparkle } from "@/app/icons";
 import type { ProgramView, ProgramDay } from "@/lib/client-program";
 import type { Intensity, Units } from "@/lib/physiology/types";
@@ -111,7 +111,7 @@ function DayRow({ d, units }: { d: ProgramDay; units: Units }) {
               <span className="text-slate-400">
                 {" · "}
                 {d.goodWindows
-                  .map((w) => `${w.period} (${w.timeRange} · ${fmtTemp(w.feelsLikeC, units)})${w.isEstimate ? " est." : ""}`)
+                  .map((w) => `${w.period} (${w.timeRange} · ${fmtTempRange(w.feelsLowC, w.feelsHighC, units)})${w.isEstimate ? " est." : ""}`)
                   .join(" & ")}
               </span>
             )}
@@ -124,8 +124,11 @@ function DayRow({ d, units }: { d: ProgramDay; units: Units }) {
             </span>
           ) : null}
           {d.feelsLikeC != null && (
-            <span className={`text-xs font-semibold ${heatTextColor(d.feelsLikeC)}`}>
-              {fmtTemp(d.feelsLikeC, units)}
+            <span className="flex flex-col items-end leading-none" title="the day's peak feels-like temperature">
+              <span className="text-[9px] font-medium uppercase tracking-wide text-slate-400">peak</span>
+              <span className={`mt-0.5 text-xs font-semibold ${heatTextColor(d.feelsLikeC)}`}>
+                {fmtTemp(d.feelsLikeC, units)}
+              </span>
             </span>
           )}
           <span className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${o.cls}`}>

@@ -6,6 +6,17 @@ export function fmtTemp(celsius: number, units: Units, digits = 0): string {
   return `${v.toFixed(digits)}°${units}`;
 }
 
+/**
+ * Format a °C range (e.g. a window's coolest→warmest hour) in the user's units,
+ * collapsing to a single value when the two ends round to the same number.
+ */
+export function fmtTempRange(lowC: number, highC: number, units: Units): string {
+  const conv = (c: number) => Math.round(units === "F" ? (c * 9) / 5 + 32 : c);
+  const lo = conv(lowC);
+  const hi = conv(highC);
+  return lo === hi ? `${lo}°${units}` : `${lo}–${hi}°${units}`;
+}
+
 export const PERSONA_LABEL: Record<string, string> = {
   ACCLIMATIZER: "Acclimatizing to a hotter place",
   LEARN_TO_SWEAT: "Restoring my sweat response",
