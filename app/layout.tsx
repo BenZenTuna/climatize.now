@@ -58,14 +58,12 @@ export const metadata: Metadata = {
     url: SITE_URL,
     siteName: "climatize.now",
     locale: "en_US",
-    images: [{ url: "/og.png", width: 1200, height: 630, alt: "climatize.now — your daily heat-adaptation plan" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "climatize.now — your daily heat-adaptation plan",
     description:
       "A personalized, weather-driven plan to adapt to heat safely. No accounts, no tracking.",
-    images: ["/og.png"],
   },
 };
 
