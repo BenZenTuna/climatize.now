@@ -63,6 +63,10 @@ export default function RootLayout({
               How it works
             </Link>
             <span aria-hidden>·</span>
+            <Link href="/about" className="hover:text-slate-600">
+              About
+            </Link>
+            <span aria-hidden>·</span>
             <Link href="/privacy" className="hover:text-slate-600">
               Privacy &amp; terms
             </Link>

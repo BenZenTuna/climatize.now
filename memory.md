@@ -5,6 +5,15 @@ Newest entry at the top.
 
 ---
 
+## 2026-07-01 — About page
+
+Added `app/about/page.tsx` (static, trust-page style) + an "About" link in the layout footer
+(How it works · About · Privacy & terms). Content: the owner's founding story (got sick from
+heat while travelling → couldn't find a personalized, safe acclimatization plan → built this with
+AI for himself, now shared as summers get hotter) + who-made-it with links to his personal page
+(https://tunas.me/taner/) and GitHub (https://github.com/BenZenTuna). Owner is **Taner**
+(GitHub BenZenTuna).
+
 ## 2026-07-01 — Today Dashboard visual redesign (from Claude Design)
 
 Owner imported a Claude Design mockup (`Today Dashboard.dc.html`, project
