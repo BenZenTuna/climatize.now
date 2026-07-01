@@ -4,6 +4,7 @@ import Script from "next/script";
 import { Space_Grotesk, Space_Mono } from "next/font/google";
 import "./globals.css";
 import { SwRegister } from "./sw-register";
+import { InstallButton } from "./install-button";
 
 // GoatCounter site code — must match the account's subdomain: climatize.goatcounter.com.
 // (Was "climatize-now", which was never registered, so the tracker sent data nowhere.)
@@ -84,6 +85,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <SwRegister />
+        <InstallButton />
         {process.env.NODE_ENV === "production" && (
           <Script
             data-goatcounter={`https://${GC_SITE}.goatcounter.com/count`}
