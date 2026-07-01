@@ -19,7 +19,11 @@ export function HeatClock({ curve, units }: { curve: HeatCurve; units: Units }) 
   const n = feels.length, lo = 20, hi = 43, base = H - pB;
   const bx = (i: number) => pL + (i / (n - 1)) * (W - pL - pR);
   const by = (v: number) => pT + (1 - (v - lo) / (hi - lo)) * (H - pT - pB);
-  const hourLabel = (hh: number) => `${hh % 12 === 0 ? 12 : hh % 12}${hh < 12 ? "a" : "p"}`;
+  const hourLabel = (hh: number) => {
+    if (hh === 0) return "12am";
+    if (hh === 12) return "12pm";
+    return `${hh % 12}${hh < 12 ? "am" : "pm"}`;
+  };
 
   const pts = feels.map((v, i) => `${bx(i).toFixed(1)},${by(v).toFixed(1)}`);
   const line = "M" + pts.join(" L");

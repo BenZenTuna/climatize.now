@@ -282,7 +282,12 @@ export function DesktopToday({
               </section>
             </div>
 
-            {/* ROW D: progress · warning signs */}
+            {/* ROW D: program calendar */}
+            <div id="program" className="col-span-12 scroll-mt-6">
+              <ProgramCalendar view={p} startISO={state.startISO} units={units} />
+            </div>
+
+            {/* ROW E: progress · warning signs */}
             {hasProgress && (
               <div id="progress" className="col-span-7 scroll-mt-6">
                 <ProgressTrends state={state} />
@@ -308,10 +313,7 @@ export function DesktopToday({
               </div>
             </section>
 
-            {/* ROW E: program calendar */}
-            <div id="program" className="col-span-12 scroll-mt-6">
-              <ProgramCalendar view={p} startISO={state.startISO} units={units} />
-            </div>
+
           </div>
 
           <p className="mt-6 text-center text-[11.5px] leading-[1.5] text-[#a8a29e]">{plan.disclaimer}</p>
