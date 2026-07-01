@@ -62,6 +62,7 @@ app/                      Next.js routes — all Client Components
   page.tsx                client redirect → /onboarding or /today           [done]
   onboarding/             goal + origin + location + screening (client form) [done]
   today/                  MAIN page: today's plan + "Your program" (merged)  [done]
+  change-cities/          settings: update destination/origin, KEEP progress [done]
   plan/                   redirect → /today (program merged into Today)      [done]
   log/                    daily self-report (client form)                    [done]
   program-list.tsx        "Your program" section + expandable day rows       [done]

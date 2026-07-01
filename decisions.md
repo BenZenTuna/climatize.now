@@ -424,3 +424,36 @@ safety overlay, thresholds, plan engine, and window logic are untouched — this
 presentation + two additive data fields (wind, ring stats). Only the Today page adopts the new
 layout; other pages inherit only the font. 75 tests + tsc + static build clean; the full data
 path (wind, 24h curve, windows, ring, forecast strip) verified live against Slivo Pole.
+
+---
+
+## 2026-07-01 — Settings menu split into two options
+
+**D33 — The gear menu now offers a non-destructive "Change cities" alongside the destructive
+"Start from the beginning".** Previously the gear's single "Change program settings" item
+called `reset()` immediately — wiping the user's entire program (goal, health answers, logs,
+progress) with no confirmation — and dropped them into onboarding. For a traveller who simply
+moved to a new city mid-trip, that meant losing all of their adaptation history just to repoint
+the plan. Now:
+
+- **Change cities** (`/change-cities`) is the everyday, non-destructive path. It updates the
+  **destination** (`state.current`, required) and optionally the **home/origin**, and **keeps
+  everything else** — persona, units, screening, trip dates, `startISO`, `dayOffset`, `logs`,
+  and `history` — via a plain `{...state, current, origin}` merge. Because `startISO`/logs are
+  preserved, the program day and the replayed adaptation total carry straight over to the new
+  city's heat.
+- **The origin baseline stays frozen** (upholding **D23**: the body's adaptation reference is
+  fixed at departure) *unless the user actively edits the home field*. The form seeds both
+  location fields from stored state; on submit it only re-runs `resolveOriginBaselineHeatIndexC`
+  when the origin text or climate band differs from what was seeded. So the common case (change
+  destination only) never disturbs the baseline, while a genuine correction/relocation still
+  can. Clearing the home field is a no-op (never wipes an existing baseline).
+- **Start from the beginning** keeps the old full-wipe behaviour but now behind an **inline
+  confirmation** ("Erase everything? … can't be undone"), since it destroys health answers and
+  progress. It still calls `reset()` → `/onboarding`.
+
+Scope: UI + a non-destructive state edit only. The physiology engine, safety overlay, thresholds,
+and window logic are untouched (the new route reuses `PlaceInput` and the existing
+`resolveOriginBaselineHeatIndexC`). tsc + 75 tests + static build clean; the field-preservation
+and frozen-baseline behaviour were proven with a standalone merge simulation (dev-env has no
+browser driver for a full click-through).

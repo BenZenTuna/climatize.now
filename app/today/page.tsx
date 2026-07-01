@@ -21,6 +21,7 @@ import {
   Home,
   MapPin,
   Moon,
+  RotateCcw,
   Settings,
   ShieldCheck,
   Sun,
@@ -68,6 +69,12 @@ export default function TodayPage() {
   const [program, setProgram] = useState<ProgramView | null>(null);
   const [error, setError] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
+
+  const closeSettings = () => {
+    setShowSettings(false);
+    setConfirmReset(false);
+  };
 
   const fetchKey = state ? `${currentProgramDay(state)}:${state.current.lat}:${state.current.lon}` : null;
 
@@ -193,14 +200,59 @@ export default function TodayPage() {
               </button>
               {showSettings && (
                 <>
-                  <div className="fixed inset-0 z-10" onClick={() => setShowSettings(false)} />
-                  <div className="absolute right-0 top-9 z-20 min-w-[170px] overflow-hidden rounded-[14px] border border-[#f4ead9] bg-white shadow-lg">
-                    <button
-                      onClick={() => { setShowSettings(false); reset(); router.push("/onboarding"); }}
-                      className="w-full px-4 py-3 text-left text-[13px] font-medium text-stone-700 hover:bg-orange-50"
-                    >
-                      Change program settings
-                    </button>
+                  <div className="fixed inset-0 z-10" onClick={closeSettings} />
+                  <div className="absolute right-0 top-9 z-20 w-[248px] overflow-hidden rounded-[14px] border border-[#f4ead9] bg-white text-left shadow-lg">
+                    {!confirmReset ? (
+                      <>
+                        <button
+                          onClick={() => { closeSettings(); router.push("/change-cities"); }}
+                          className="flex w-full items-start gap-2.5 px-3.5 py-3 text-left hover:bg-orange-50"
+                        >
+                          <MapPin className="mt-0.5 h-[17px] w-[17px] shrink-0 text-orange-500" />
+                          <span>
+                            <span className="block text-[13.5px] font-semibold text-stone-800">Change cities</span>
+                            <span className="mt-0.5 block text-[11.5px] leading-[1.4] text-stone-500">
+                              Keep your progress — just update where you are
+                            </span>
+                          </span>
+                        </button>
+                        <div className="h-px bg-[#f4ead9]" />
+                        <button
+                          onClick={() => setConfirmReset(true)}
+                          className="flex w-full items-start gap-2.5 px-3.5 py-3 text-left hover:bg-red-50"
+                        >
+                          <RotateCcw className="mt-0.5 h-[17px] w-[17px] shrink-0 text-red-500" />
+                          <span>
+                            <span className="block text-[13.5px] font-semibold text-stone-800">Start from the beginning</span>
+                            <span className="mt-0.5 block text-[11.5px] leading-[1.4] text-stone-500">
+                              Erase everything and rebuild your plan
+                            </span>
+                          </span>
+                        </button>
+                      </>
+                    ) : (
+                      <div className="p-3.5">
+                        <div className="text-[13.5px] font-bold text-stone-900">Erase everything?</div>
+                        <p className="mt-1 text-[12px] leading-[1.5] text-stone-500">
+                          This wipes your program, daily logs, and health answers, then starts a fresh
+                          setup. This can&apos;t be undone.
+                        </p>
+                        <div className="mt-3 flex gap-2">
+                          <button
+                            onClick={() => { reset(); router.push("/onboarding"); }}
+                            className="flex-1 rounded-lg bg-red-600 px-3 py-2 text-[12.5px] font-bold text-white hover:bg-red-700"
+                          >
+                            Yes, start over
+                          </button>
+                          <button
+                            onClick={() => setConfirmReset(false)}
+                            className="rounded-lg border border-stone-200 px-3 py-2 text-[12.5px] font-semibold text-stone-600 hover:bg-stone-50"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </>
               )}

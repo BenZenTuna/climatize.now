@@ -5,6 +5,28 @@ Newest entry at the top.
 
 ---
 
+## 2026-07-01 — Settings menu: two options (change cities vs. start over)
+
+Owner asked (Today-screen screenshot) to split the gear menu's single "Change program
+settings" (which just wiped everything) into **two distinct options** (decisions D33). tsc +
+75 tests + static build clean; routes serve 200; merge logic proven by a standalone sim.
+- **Gear dropdown** (`app/today/page.tsx`) now shows two labelled items:
+  1. **Change cities** (`MapPin`) → `/change-cities` — *keep your progress, just update where
+     you are*.
+  2. **Start from the beginning** (`RotateCcw`, red) → an **inline confirm** ("Erase
+     everything?") → `reset()` + `/onboarding`. Added a confirm step because it's destructive
+     (the old one wiped instantly). New `confirmReset` state + `closeSettings()` helper resets
+     both flags on close. Added a `RotateCcw` icon to `app/icons.tsx`.
+- **New route `app/change-cities/page.tsx`** — a focused form (reuses `PlaceInput` + `Brand`)
+  that updates the **destination** (`state.current`, required) and optionally the **home/origin**,
+  while **keeping everything else** (persona, units, screening, `tripEndISO`, `startISO`,
+  `dayOffset`, `logs`, `history`) via `{...s, current, origin}`. The **origin baseline stays
+  frozen** (D23) unless the user actively edits the home field — detected by comparing the
+  origin text/band against the seeded values; only then is `resolveOriginBaselineHeatIndexC`
+  re-run. Fields are seeded from stored state once (guarded render until `seeded`). Cancel →
+  `/today`. A footer note points users to "Start from the beginning" for goal/health/units
+  changes. No engine/safety changes — presentation + a non-destructive state edit.
+
 ## 2026-07-01 — SEO & social sharing (OG image + full metadata)
 
 Full search-engine and social-sharing layer added; static build clean.
