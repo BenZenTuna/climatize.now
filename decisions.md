@@ -457,3 +457,36 @@ and window logic are untouched (the new route reuses `PlaceInput` and the existi
 `resolveOriginBaselineHeatIndexC`). tsc + 75 tests + static build clean; the field-preservation
 and frozen-baseline behaviour were proven with a standalone merge simulation (dev-env has no
 browser driver for a full click-through).
+
+---
+
+## 2026-07-01 — Today Dashboard desktop layout (responsive `/today`)
+
+**D34 — The Today page is now responsive: the existing mobile layout below `lg`, and a
+sidebar + 12-column bento dashboard at `lg` and up.** The owner imported a second Claude Design
+file (`Today Dashboard - Desktop.dc.html`, same project as D32, read via the DesignSync MCP) and
+asked to implement the desktop version. Chosen shape and reasoning:
+
+- **Responsive enhancement, not a separate route.** `/today` renders BOTH layouts from one
+  component: the current mobile JSX wrapped `lg:hidden`, and a new `<DesktopToday>` wrapped
+  `hidden lg:block`. Both consume the SAME `TodayView`/`ProgramView` (one fetch, one engine run)
+  and the same `units`/handlers, so there is exactly one data path and the two layouts can never
+  disagree. A `<lg`/`≥lg` CSS toggle (not a JS media query) avoids hydration/flash issues.
+- **DRY where identical, faithful where different.** The safety-palette + plan chrome
+  (`SAFE`, `INTENSITY_LABEL`, `ADJUST`, `windLabel`, `PlanPill`, `RecognitionList`) moved to
+  `app/today/shared.tsx` and are imported by both layouts (the mobile markup is byte-for-byte
+  unchanged — verified). Self-contained chart/data components (`HeatClock`, `ProgressTrends`)
+  are reused as-is; `AdaptationRing` got a `stacked` variant and `ForecastStrip` a `rows`
+  variant for the bento cells. New desktop-only pieces: `Sidebar` (left nav; primary items are
+  in-page `#anchor` links since the whole program lives on `/today`), a vertical
+  **Live-conditions** card (desktop replacement for the mobile hero stat row), and
+  `ProgramCalendar` (the program as a 7-across day-card grid instead of the mobile expandable
+  list — both read the same `ProgramView.days`).
+- **Functional parity preserved.** The mobile gear menu's two actions (D33) survive on desktop:
+  **Change cities** and **Start over** live in the sidebar's secondary nav (Start over still
+  behind a confirm). Nothing in the physiology core, safety overlay, thresholds, plan engine, or
+  window logic changed — this is presentation + two additive component variants.
+
+Verified with real seeded state (Seville, 6 days in, one skipped hard-stop day) via headless
+Chromium at 1440 / 1024 / 402 px: the desktop bento renders correctly with live data, the mobile
+layout is unchanged, and there are no console errors. tsc + 75 tests + static build clean.

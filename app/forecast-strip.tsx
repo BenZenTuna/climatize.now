@@ -5,7 +5,7 @@ import type { ForecastDay } from "@/lib/client-program";
 import type { Units } from "@/lib/physiology/types";
 
 // Continuous heat→colour ramp (cool blue → red), ported from the design.
-function heatColor(c: number): string {
+export function heatColor(c: number): string {
   const hex2 = (h: string) => {
     const s = h.replace("#", "");
     return [0, 2, 4].map((i) => parseInt(s.slice(i, i + 2), 16));
@@ -35,9 +35,66 @@ function heatColor(c: number): string {
 
 const DOT: Record<string, string> = { GOOD: "#059669", TOUGH: "#d97706", SHELTER: "#dc2626" };
 
-export function ForecastStrip({ days, units }: { days: ForecastDay[]; units: Units }) {
+export function ForecastStrip({
+  days,
+  units,
+  variant = "bars",
+}: {
+  days: ForecastDay[];
+  units: Units;
+  /** "bars" = mobile vertical bars; "rows" = desktop horizontal list (bento card). */
+  variant?: "bars" | "rows";
+}) {
   const deg = (c: number) => `${Math.round(units === "F" ? (c * 9) / 5 + 32 : c)}°`;
   const lo = 33, hi = 44;
+
+  const legend = (
+    <div className="mt-3.5 flex flex-wrap gap-x-3.5 gap-y-1.5 text-[11px] text-[#78716c]">
+      <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-[#059669]" />Good window</span>
+      <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-[#d97706]" />Go gentle</span>
+      <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-[#dc2626]" />Shelter day</span>
+    </div>
+  );
+
+  if (variant === "rows") {
+    return (
+      <section className={DC_CARD}>
+        <div className="flex items-baseline justify-between">
+          <span className={`${DC_MONO_HEAD} whitespace-nowrap`}>Next 7 days</span>
+          <span className="whitespace-nowrap font-mono text-[10px] text-[#a8a29e]">max feels-like</span>
+        </div>
+        <div className="mt-3 flex flex-col gap-0.5">
+          {days.map((d, i) => {
+            const w = Math.max(10, Math.min(100, ((d.maxFeelsC - lo) / (hi - lo)) * 100));
+            const c = heatColor(d.maxFeelsC);
+            return (
+              <div
+                key={i}
+                className="flex items-center gap-2.5 rounded-[11px] px-[9px] py-[7px]"
+                style={{
+                  background: d.isToday ? "#fff7ed" : "transparent",
+                  border: `1px solid ${d.isToday ? "#fde6cf" : "transparent"}`,
+                }}
+              >
+                <div
+                  className="w-[42px] shrink-0 font-mono text-[11px]"
+                  style={{ color: d.isToday ? "#ea580c" : "#78716c", fontWeight: d.isToday ? 700 : 400 }}
+                >
+                  {d.label}
+                </div>
+                <div className="h-2.5 flex-1 overflow-hidden rounded-[6px] bg-[#f3ece1]">
+                  <div className="h-full rounded-[6px]" style={{ width: `${w}%`, background: `linear-gradient(90deg,${c}bb,${c})` }} />
+                </div>
+                <div className="w-[34px] shrink-0 text-right text-[13px] font-bold text-[#44403c]">{deg(d.maxFeelsC)}</div>
+                <div className="h-2 w-2 shrink-0 rounded-full" style={{ background: DOT[d.outlook] }} />
+              </div>
+            );
+          })}
+        </div>
+        {legend}
+      </section>
+    );
+  }
 
   return (
     <section className={DC_CARD}>
@@ -73,11 +130,7 @@ export function ForecastStrip({ days, units }: { days: ForecastDay[]; units: Uni
           );
         })}
       </div>
-      <div className="mt-3.5 flex flex-wrap gap-x-3.5 gap-y-1.5 text-[11px] text-[#78716c]">
-        <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-[#059669]" />Good window</span>
-        <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-[#d97706]" />Go gentle</span>
-        <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-[#dc2626]" />Shelter day</span>
-      </div>
+      {legend}
     </section>
   );
 }

@@ -61,7 +61,12 @@ any CDN.
 app/                      Next.js routes — all Client Components
   page.tsx                client redirect → /onboarding or /today           [done]
   onboarding/             goal + origin + location + screening (client form) [done]
-  today/                  MAIN page: today's plan + "Your program" (merged)  [done]
+  today/                  MAIN page: responsive — mobile stack + desktop bento [done]
+    page.tsx                mobile layout (<lg) + renders DesktopToday (lg+)
+    desktop.tsx             sidebar + 12-col bento dashboard (lg+)
+    sidebar.tsx             desktop left nav (in-page anchors + settings actions)
+    program-calendar.tsx    desktop 7-across day-card grid (ProgramView.days)
+    shared.tsx              SAFE palette + plan chrome shared by both layouts
   change-cities/          settings: update destination/origin, KEEP progress [done]
   plan/                   redirect → /today (program merged into Today)      [done]
   log/                    daily self-report (client form)                    [done]

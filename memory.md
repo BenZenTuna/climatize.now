@@ -5,6 +5,35 @@ Newest entry at the top.
 
 ---
 
+## 2026-07-01 — Today Dashboard — Desktop layout (sidebar + 12-col bento)
+
+Owner imported a second Claude Design file from the same project
+(`df9cdc86-417c-4ec1-a156-4e01d50818fb` → **`Today Dashboard - Desktop.dc.html`**, read via
+DesignSync MCP) and asked to implement the desktop version. Done as a **responsive
+enhancement of `/today`** (decisions D34) — one data path, safety/physiology untouched. tsc +
+75 tests + static build clean; verified with real seeded state via headless Chromium at 1440 /
+1024 / 402 px (desktop bento renders; mobile unchanged; no console errors).
+- **`/today` is now responsive.** The existing mobile layout is wrapped `lg:hidden`; a new
+  desktop layout renders at `lg+` (`hidden lg:block`). Both are fed by the SAME `TodayView` /
+  `ProgramView` and the same handlers — so there's no second data path and no divergence.
+- **New `app/today/desktop.tsx`** (`DesktopToday`) — sidebar + header + a 12-column bento:
+  Row A ring · safety · **live-conditions** (new vertical Now/Feels/Humidity/Wind card, the
+  desktop replacement for the mobile hero stat row); Row B heat curve(8) · forecast(4);
+  Row C plan(7, 2-col steps) · [rest-of-day + why stacked](5); Row D progress(7) ·
+  warnings(5); Row E 14-day program **calendar**(12).
+- **New `app/today/sidebar.tsx`** (`Sidebar`) — left rail: Today (active) / Log today /
+  Progress / Program / Forecast (the last three are in-page `#anchor` links) · How it works /
+  About / Change cities / **Start over** (kept for parity with the mobile gear, behind an inline
+  confirm). Footer "no accounts · no tracking".
+- **New `app/today/program-calendar.tsx`** (`ProgramCalendar`) — the whole program as a
+  7-across day-card grid (today outlined orange, future dashed/"projected", skipped dimmed,
+  felt-rating dots), from the same `ProgramView.days`. Short dates computed from `startISO`.
+- **Shared, no duplication:** extracted `SAFE`/`INTENSITY_LABEL`/`ADJUST`/`windLabel`/`PlanPill`/
+  `RecognitionList` into **`app/today/shared.tsx`** (mobile page now imports them — markup
+  unchanged). `AdaptationRing` gained a `stacked` prop (centered ring + boxed 2×2 stats for the
+  bento), `ForecastStrip` a `variant="rows"` (desktop list), and `heatColor` is now exported.
+  `HeatClock` / `ProgressTrends` reused as-is (they scale to their container).
+
 ## 2026-07-01 — Settings menu: two options (change cities vs. start over)
 
 Owner asked (Today-screen screenshot) to split the gear menu's single "Change program

@@ -3,7 +3,7 @@
 import { DC_CARD as CARD, DC_MONO_HEAD as MONO_HEAD, DC_MONO_SMALL as MONO_SMALL } from "@/app/dc-styles";
 
 /** The circular adaptation gauge (ported from the Today Dashboard design). */
-function Ring({ pct }: { pct: number }) {
+function Ring({ pct, size = 148 }: { pct: number; size?: number }) {
   const S = 176,
     cx = 88,
     cy = 88,
@@ -31,7 +31,7 @@ function Ring({ pct }: { pct: number }) {
     );
   });
   return (
-    <svg viewBox={`0 0 ${S} ${S}`} style={{ width: 148, height: 148, display: "block" }}>
+    <svg viewBox={`0 0 ${S} ${S}`} style={{ width: size, height: size, display: "block" }}>
       <defs>
         <linearGradient id="ringG" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stopColor="#fbbf24" />
@@ -81,11 +81,11 @@ function Ring({ pct }: { pct: number }) {
   );
 }
 
-function Stat({ label, value, valueClass }: { label: string; value: string; valueClass?: string }) {
+function Stat({ label, value, valueClass, boxed }: { label: string; value: string; valueClass?: string; boxed?: boolean }) {
   return (
-    <div>
+    <div className={boxed ? "rounded-xl border border-[#f0e7db] bg-[#fffdfa] px-[11px] py-[9px]" : undefined}>
       <div className={MONO_SMALL}>{label}</div>
-      <div className={`mt-0.5 text-base font-bold ${valueClass ?? "text-stone-900"}`}>{value}</div>
+      <div className={`mt-0.5 whitespace-nowrap font-bold ${boxed ? "text-[17px]" : "text-base"} ${valueClass ?? "text-stone-900"}`}>{value}</div>
     </div>
   );
 }
@@ -98,6 +98,7 @@ export function AdaptationRing({
   heatDoseMinutes,
   fullAdaptLabel,
   trend7Pct,
+  stacked = false,
 }: {
   pct: number;
   daysLogged: number;
@@ -106,8 +107,11 @@ export function AdaptationRing({
   heatDoseMinutes: number;
   fullAdaptLabel: string;
   trend7Pct: number;
+  /** Desktop bento layout: ring centered above a boxed 2×2 stat grid. */
+  stacked?: boolean;
 }) {
   const trend = `${trend7Pct >= 0 ? "+" : ""}${trend7Pct}%`;
+  const trendClass = trend7Pct > 0 ? "text-emerald-600" : trend7Pct < 0 ? "text-amber-600" : "text-stone-400";
   return (
     <section className={CARD}>
       <div className="flex items-center justify-between">
@@ -116,21 +120,31 @@ export function AdaptationRing({
           Day {currentDay + 1} / {totalDays}
         </span>
       </div>
-      <div className="mt-3 flex items-center gap-3.5">
-        <div className="shrink-0">
-          <Ring pct={pct} />
+      {stacked ? (
+        <>
+          <div className="mt-2 flex justify-center">
+            <Ring pct={pct} size={162} />
+          </div>
+          <div className="mt-3.5 grid grid-cols-2 gap-3">
+            <Stat boxed label="Days done" value={`${daysLogged} / ${totalDays}`} />
+            <Stat boxed label="Heat dose" value={`${heatDoseMinutes} min`} />
+            <Stat boxed label="Full adapt" value={fullAdaptLabel} />
+            <Stat boxed label="7-day trend" value={trend} valueClass={trendClass} />
+          </div>
+        </>
+      ) : (
+        <div className="mt-3 flex items-center gap-3.5">
+          <div className="shrink-0">
+            <Ring pct={pct} />
+          </div>
+          <div className="grid flex-1 grid-cols-2 gap-x-2 gap-y-2.5">
+            <Stat label="Days done" value={`${daysLogged} / ${totalDays}`} />
+            <Stat label="Heat dose" value={`${heatDoseMinutes} min`} />
+            <Stat label="Full adapt" value={fullAdaptLabel} />
+            <Stat label="7-day trend" value={trend} valueClass={trendClass} />
+          </div>
         </div>
-        <div className="grid flex-1 grid-cols-2 gap-x-2 gap-y-2.5">
-          <Stat label="Days done" value={`${daysLogged} / ${totalDays}`} />
-          <Stat label="Heat dose" value={`${heatDoseMinutes} min`} />
-          <Stat label="Full adapt" value={fullAdaptLabel} />
-          <Stat
-            label="7-day trend"
-            value={trend}
-            valueClass={trend7Pct > 0 ? "text-emerald-600" : trend7Pct < 0 ? "text-amber-600" : "text-stone-400"}
-          />
-        </div>
-      </div>
+      )}
       <div className="mt-3 rounded-xl border border-[#fde6cf] bg-[#fff7ed] px-3 py-2.5 text-[12px] leading-[1.45] text-[#9a3412]">
         Retention holds while you keep showing up — a missed day nudges this back down.
       </div>
