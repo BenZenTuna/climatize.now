@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     template: "%s — climatize.now",
   },
   description:
-    "A personalized, weather-driven plan to adapt to heat safely. No accounts, no tracking. Free forever. Wellness guidance, not medical advice.",
+    "A personalized, weather-driven plan to adapt to heat safely. No accounts, no tracking. Wellness guidance, not medical advice.",
   keywords: [
     "heat acclimatization",
     "heat adaptation",
@@ -53,7 +53,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "climatize.now — your daily heat-adaptation plan",
     description:
-      "A personalized, weather-driven plan to adapt to heat safely. No accounts, no tracking. Free forever.",
+      "A personalized, weather-driven plan to adapt to heat safely. No accounts, no tracking.",
     type: "website",
     url: SITE_URL,
     siteName: "climatize.now",

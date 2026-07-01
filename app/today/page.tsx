@@ -21,6 +21,7 @@ import {
   Home,
   MapPin,
   Moon,
+  Settings,
   ShieldCheck,
   Sun,
   Wind,
@@ -66,6 +67,7 @@ export default function TodayPage() {
   const [view, setView] = useState<TodayView | null>(null);
   const [program, setProgram] = useState<ProgramView | null>(null);
   const [error, setError] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   const fetchKey = state ? `${currentProgramDay(state)}:${state.current.lat}:${state.current.lon}` : null;
 
@@ -177,8 +179,32 @@ export default function TodayPage() {
       {/* HERO */}
       <section className="overflow-hidden rounded-[22px] border border-[#f4ead9] bg-white shadow-[0_1px_2px_rgba(28,25,23,.05),0_20px_42px_-26px_rgba(234,88,12,.34)]">
         <div className="px-[18px] pb-[15px] pt-4 text-white" style={{ background: "linear-gradient(135deg,#fb923c 0%,#f97316 52%,#ea580c 100%)" }}>
-          <div className="font-mono text-[10px] uppercase tracking-[.17em] text-white/80">
-            Day {v.programDay + 1} of {p.totalDays} · your program
+          <div className="flex items-center justify-between">
+            <div className="font-mono text-[10px] uppercase tracking-[.17em] text-white/80">
+              Day {v.programDay + 1} of {p.totalDays} · your program
+            </div>
+            <div className="relative">
+              <button
+                onClick={() => setShowSettings((s) => !s)}
+                className="flex h-7 w-7 items-center justify-center rounded-full bg-white/20 transition-colors hover:bg-white/35"
+                aria-label="Settings"
+              >
+                <Settings className="h-[15px] w-[15px] text-white" />
+              </button>
+              {showSettings && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setShowSettings(false)} />
+                  <div className="absolute right-0 top-9 z-20 min-w-[170px] overflow-hidden rounded-[14px] border border-[#f4ead9] bg-white shadow-lg">
+                    <button
+                      onClick={() => { setShowSettings(false); reset(); router.push("/onboarding"); }}
+                      className="w-full px-4 py-3 text-left text-[13px] font-medium text-stone-700 hover:bg-orange-50"
+                    >
+                      Change program settings
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
           <div className="mt-[7px] flex items-center gap-[7px] text-[23px] font-bold tracking-[-.02em]">
             <MapPin className="h-[19px] w-[19px] shrink-0 text-white/90" />
@@ -403,15 +429,6 @@ export default function TodayPage() {
       </div>
 
       <p className="mt-1 text-center text-[11px] leading-[1.5] text-[#a8a29e]">{plan.disclaimer}</p>
-      <button
-        onClick={() => {
-          reset();
-          router.push("/onboarding");
-        }}
-        className="mx-auto text-[11px] text-stone-400 underline-offset-2 hover:text-stone-600 hover:underline"
-      >
-        Start over
-      </button>
     </main>
   );
 }
