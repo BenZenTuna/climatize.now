@@ -182,6 +182,7 @@ export interface DayForecast {
 export interface MultiDayForecast {
   timezone: string;
   now: HourPoint;
+  nowWindKmh: number; // current wind speed (km/h) for the hero
   days: DayForecast[]; // day 0 = today, then forward
 }
 
@@ -199,7 +200,8 @@ export async function fetchMultiDayForecast(
   const params = new URLSearchParams({
     latitude: String(latitude),
     longitude: String(longitude),
-    current: "temperature_2m,relative_humidity_2m,apparent_temperature,shortwave_radiation",
+    current:
+      "temperature_2m,relative_humidity_2m,apparent_temperature,shortwave_radiation,wind_speed_10m",
     hourly: "temperature_2m,relative_humidity_2m,apparent_temperature,shortwave_radiation",
     timezone: "auto",
     forecast_days: String(n),
@@ -246,7 +248,12 @@ export async function fetchMultiDayForecast(
       return { date, hours, safeWindow: pickWindowAnchor(hours, tightenC), goodWindows: findGoodWindows(hours, tightenC), peak };
     });
 
-  return { timezone: data.timezone, now, days: forecastDays };
+  return {
+    timezone: data.timezone,
+    now,
+    nowWindKmh: Number(cur.wind_speed_10m ?? 0),
+    days: forecastDays,
+  };
 }
 
 export interface SafestWindow {

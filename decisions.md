@@ -388,3 +388,39 @@ the window times from the badge — **partially reversing commit c3962a4** ("sho
 window badge") — because the summary already lists each window with its honest temp range
 (D30), so the badge repetition was both redundant and the cause of the overflow. No information
 is lost. 75 tests + tsc + static export all clean.
+
+---
+
+## 2026-07-01 — Today Dashboard visual redesign (imported from Claude Design)
+
+**D32 — The Today page is restyled to the owner's Claude Design mockup (`Today
+Dashboard.dc.html`), wired to real data, with no loss of existing features.** The mockup was
+read via the DesignSync MCP (project `df9cdc86-417c-4ec1-a156-4e01d50818fb`). Faithful port,
+but every value comes from the live engine/forecast, not the mockup's demo numbers.
+
+- **Type system**: Space Grotesk (body) + Space Mono (mono labels) replace Geist, via
+  `next/font/google`. Shared class tokens live in `app/dc-styles.ts` so all cards stay
+  consistent. The warm background gradient was already a match (globals.css), so it's unchanged.
+- **New/rewritten components**: `AdaptationRing` (circular gauge + real stats), `ForecastStrip`
+  (7-day heat bars + outlook dots), and the heat clock **rewritten from bars to an area+line
+  curve** matching the design (shaded cool windows, 32°/39° threshold lines, NOW marker). The
+  bar `HeatHour[]` on `TodayView` became `heatCurve {feelsC[24], windows, nowHour}`.
+- **Live °C/°F toggle** in the header (a long-standing gap — units were onboarding-only). It
+  writes `state.units`; the Today page renders temperatures from `state.units` (not the
+  view snapshot), so toggling is instant and triggers **no re-fetch** (the raw view values are
+  °C and unit-agnostic).
+- **Wind**: added `wind_speed_10m` to the Open-Meteo `current` call → `nowWindKmh` →
+  `TodayView.windKmh`, shown as the hero's 4th stat (km/h, or mph in °F).
+- **Ring stats on `ProgramView`** (all real): `daysLogged`, `heatDoseMinutes` (cumulative
+  completed exposure), `fullAdaptLabel` (projected date adaptation reaches the persona ramp
+  length, at +1 adaptation-day/day), `trend7Pct` (adaptation-% delta vs 7 days ago via
+  `adaptationAfter`), and `forecastStrip` (next 7 days' peak feels-like + window outlook).
+
+**Deliberately kept beyond the mockup** (real features the mockup simply didn't show): the
+rest-of-day recovery card (D27), the "why today looks like this" rationale, the tap-to-expand
+full **program list** (D19/D20, now a `DC_CARD`, its linear adaptation meter removed since the
+ring supersedes it), and a Start-over control (moved to a quiet link near the footer). The
+safety overlay, thresholds, plan engine, and window logic are untouched — this change is
+presentation + two additive data fields (wind, ring stats). Only the Today page adopts the new
+layout; other pages inherit only the font. 75 tests + tsc + static build clean; the full data
+path (wind, 24h curve, windows, ring, forecast strip) verified live against Slivo Pole.

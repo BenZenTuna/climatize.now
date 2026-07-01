@@ -8,7 +8,9 @@ import { buildTodayView, buildProgramView, currentProgramDay, type TodayView, ty
 import { ProgramSection } from "@/app/program-list";
 import { ProgressTrends } from "@/app/progress-trends";
 import { HeatClock } from "@/app/heat-clock";
-import { Brand } from "@/app/brand";
+import { AdaptationRing } from "@/app/adaptation-ring";
+import { ForecastStrip } from "@/app/forecast-strip";
+import { DC_CARD, DC_CARD_WARM, DC_MONO_HEAD, DC_MONO_SMALL } from "@/app/dc-styles";
 import {
   Activity,
   Alert,
@@ -21,44 +23,42 @@ import {
   Moon,
   ShieldCheck,
   Sun,
-  Thermometer,
   Wind,
 } from "@/app/icons";
-import { fmtTemp, fmtTempRange, heatTextColor, PERSONA_LABEL } from "@/lib/units";
-import type { SafetyLevel } from "@/lib/physiology/types";
+import { fmtTemp, fmtTempRange, PERSONA_LABEL } from "@/lib/units";
+import type { SafetyLevel, Units } from "@/lib/physiology/types";
 
-const SAFETY: Record<SafetyLevel, { card: string; chip: string; dot: string; label: string; sub: string }> = {
+// Safety verdict palette (Today Dashboard design) + the app's reviewed copy.
+const SAFE: Record<SafetyLevel, { bg: string; border: string; accent: string; chipBg: string; chipInk: string; label: string; sub: string }> = {
   NORMAL: {
-    card: "border-emerald-200 bg-emerald-50",
-    chip: "bg-emerald-100 text-emerald-700",
-    dot: "text-emerald-600",
+    bg: "#ecfdf5", border: "#bbf7d0", accent: "#059669", chipBg: "#d1fae5", chipInk: "#047857",
     label: "Good to go — gently",
     sub: "The window you'll exercise in is in the safe range. Keep it light and stop if you feel unwell.",
   },
   CAUTION: {
-    card: "border-amber-200 bg-amber-50",
-    chip: "bg-amber-100 text-amber-800",
-    dot: "text-amber-600",
+    bg: "#fffbeb", border: "#fde68a", accent: "#b45309", chipBg: "#fef3c7", chipInk: "#92400e",
     label: "Caution — keep it easy",
-    sub: "Conditions are on the warm side, so today's plan is capped and kept gentle.",
+    sub: "Conditions are on the warm side, so today's plan is capped and timed for the cool hours.",
   },
   HARD_STOP: {
-    card: "border-red-200 bg-red-50",
-    chip: "bg-red-100 text-red-800",
-    dot: "text-red-600",
+    bg: "#fef2f2", border: "#fecaca", accent: "#b91c1c", chipBg: "#fee2e2", chipInk: "#991b1b",
     label: "Stop — too dangerous for heat today",
-    sub: "Even the coolest hours are unsafe. Shelter and cool only — no exposure today.",
+    sub: "Even the coolest hours read above the danger line. Shelter and cool only — no exposure today.",
   },
 };
 
 const INTENSITY_LABEL: Record<string, string> = { REST: "passive", LIGHT: "light", MODERATE: "light–moderate" };
 
-const ADJUST: Record<string, { text: string; cls: string }> = {
-  ADVANCED: { text: "Advanced ↑", cls: "bg-emerald-100 text-emerald-800" },
-  HELD: { text: "Held →", cls: "bg-slate-100 text-slate-700" },
-  REDUCED: { text: "Reduced ↓", cls: "bg-amber-100 text-amber-800" },
-  ABORTED: { text: "Rest day ⏸", cls: "bg-red-100 text-red-800" },
+const ADJUST: Record<string, { text: string; bg: string; ink: string }> = {
+  ADVANCED: { text: "Advanced ↑", bg: "#d1fae5", ink: "#047857" },
+  HELD: { text: "Held →", bg: "#f5f5f4", ink: "#57534e" },
+  REDUCED: { text: "Reduced ↓", bg: "#fef3c7", ink: "#92400e" },
+  ABORTED: { text: "Rest day ⏸", bg: "#fee2e2", ink: "#991b1b" },
 };
+
+function windLabel(kmh: number, units: Units): string {
+  return units === "F" ? `${Math.round(kmh * 0.621)} mph` : `${Math.round(kmh)} km/h`;
+}
 
 export default function TodayPage() {
   const router = useRouter();
@@ -67,9 +67,7 @@ export default function TodayPage() {
   const [program, setProgram] = useState<ProgramView | null>(null);
   const [error, setError] = useState(false);
 
-  const fetchKey = state
-    ? `${currentProgramDay(state)}:${state.current.lat}:${state.current.lon}`
-    : null;
+  const fetchKey = state ? `${currentProgramDay(state)}:${state.current.lat}:${state.current.lon}` : null;
 
   useEffect(() => {
     if (!ready) return;
@@ -118,7 +116,7 @@ export default function TodayPage() {
   if (error) {
     return (
       <Centered>
-        <p className="text-slate-600">Couldn&apos;t reach the weather service. Check your connection.</p>
+        <p className="text-stone-600">Couldn&apos;t reach the weather service. Check your connection.</p>
         <button onClick={() => location.reload()} className="mt-4 rounded-xl bg-orange-600 px-4 py-2 font-medium text-white">
           Retry
         </button>
@@ -126,82 +124,114 @@ export default function TodayPage() {
     );
   }
 
-  const { plan, units } = view!;
-  const safety = SAFETY[plan.safetyLevel];
+  const v = view!;
+  const p = program!;
+  const units = state.units;
+  const { plan } = v;
+  const safety = SAFE[plan.safetyLevel];
   const SafetyIcon = plan.safetyLevel === "NORMAL" ? ShieldCheck : Alert;
-  const windowIsNight = /night|evening/i.test(plan.timeWindow);
-  const loggedToday = !!state.logs[view!.programDay];
+  const loggedToday = !!state.logs[v.programDay];
+  const setUnits = (u: Units) => update({ ...state, units: u });
 
   return (
-    <main className="mx-auto w-full max-w-2xl px-4 py-6 sm:px-5">
-      <div className="mb-4 flex items-center justify-between">
-        <Brand />
-        <button
-          onClick={() => {
-            reset();
-            router.push("/onboarding");
-          }}
-          className="rounded-full px-3 py-1 text-xs text-slate-400 hover:bg-white hover:text-slate-600"
-        >
-          Start over
-        </button>
-      </div>
-
-      {/* Hero: location + live conditions */}
-      <section className="rise overflow-hidden rounded-3xl border border-orange-100 bg-white shadow-sm">
-        <div className="bg-gradient-to-br from-orange-500 to-amber-500 px-5 py-4 text-white">
-          <div className="text-xs font-semibold uppercase tracking-wide text-white/80">
-            Day {view!.programDay + 1} of your program
+    <main className="mx-auto flex w-full max-w-[432px] flex-col gap-3.5 px-[15px] pb-12 pt-[22px]">
+      {/* HEADER */}
+      <header className="flex items-center justify-between">
+        <div className="flex items-center gap-[11px]">
+          <div
+            className="flex h-10 w-10 items-center justify-center rounded-[13px]"
+            style={{ background: "linear-gradient(140deg,#fcd34d 0%,#f97316 55%,#ea580c 100%)", boxShadow: "0 7px 18px -6px rgba(234,88,12,.6)" }}
+          >
+            <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+              <g stroke="#fff" strokeWidth="1.9" strokeLinecap="round" opacity="0.95">
+                <line x1="20" y1="8" x2="20" y2="12.5" />
+                <line x1="11" y1="11.5" x2="13.6" y2="14.1" />
+                <line x1="29" y1="11.5" x2="26.4" y2="14.1" />
+              </g>
+              <circle cx="20" cy="25" r="7" fill="#fff" opacity="0.96" />
+              <rect x="6.5" y="27" width="27" height="2.4" rx="1.2" fill="#fff" opacity="0.96" />
+              <rect x="11" y="31.4" width="18" height="2" rx="1" fill="#fff" opacity="0.62" />
+            </svg>
           </div>
-          <h1 className="mt-1 flex items-center gap-1.5 text-2xl font-bold leading-tight">
-            <MapPin className="h-5 w-5 shrink-0 text-white/90" />
-            {view!.currentLabel}
-          </h1>
-          <p className="text-sm text-white/85">{PERSONA_LABEL[state.persona] ?? state.persona}</p>
+          <div className="leading-none">
+            <div className="text-[18px] font-bold tracking-[-.025em]">
+              climatize<span className="text-[#f97316]">.now</span>
+            </div>
+            <div className={`${DC_MONO_SMALL} mt-1 tracking-[.16em]`}>Heat adaptation</div>
+          </div>
         </div>
-        <div className="grid grid-cols-3 divide-x divide-slate-100">
-          <HeroStat icon={<Thermometer className="h-4 w-4" />} label="Right now" value={fmtTemp(view!.current.tempC, units)} />
-          <HeroStat
-            icon={<Sun className="h-4 w-4" />}
-            label="Feels like"
-            value={fmtTemp(view!.current.apparentTempC, units)}
-            valueClass={heatTextColor(view!.current.apparentTempC)}
-          />
-          <HeroStat icon={<Droplet className="h-4 w-4" />} label="Humidity" value={`${Math.round(view!.current.humidityPct)}%`} />
+        <div className="flex rounded-full border border-[#f0e7db] bg-white p-0.5 shadow-[0_1px_2px_rgba(28,25,23,.05)]">
+          {(["C", "F"] as const).map((u) => (
+            <button
+              key={u}
+              onClick={() => setUnits(u)}
+              className="cursor-pointer rounded-full px-3 py-[5px] font-mono text-[12px] font-bold transition-all"
+              style={units === u ? { background: "#f97316", color: "#fff" } : { background: "transparent", color: "#78716c" }}
+            >
+              °{u}
+            </button>
+          ))}
+        </div>
+      </header>
+
+      {/* HERO */}
+      <section className="overflow-hidden rounded-[22px] border border-[#f4ead9] bg-white shadow-[0_1px_2px_rgba(28,25,23,.05),0_20px_42px_-26px_rgba(234,88,12,.34)]">
+        <div className="px-[18px] pb-[15px] pt-4 text-white" style={{ background: "linear-gradient(135deg,#fb923c 0%,#f97316 52%,#ea580c 100%)" }}>
+          <div className="font-mono text-[10px] uppercase tracking-[.17em] text-white/80">
+            Day {v.programDay + 1} of {p.totalDays} · your program
+          </div>
+          <div className="mt-[7px] flex items-center gap-[7px] text-[23px] font-bold tracking-[-.02em]">
+            <MapPin className="h-[19px] w-[19px] shrink-0 text-white/90" />
+            {v.currentLabel}
+          </div>
+          <div className="mt-[3px] text-[13px] text-white/85">{PERSONA_LABEL[state.persona] ?? state.persona}</div>
+        </div>
+        <div className="grid grid-cols-4">
+          <HeroStat label="Now" value={fmtTemp(v.current.tempC, units)} />
+          <HeroStat label="Feels" value={fmtTemp(v.current.apparentTempC, units)} valueColor="#c2410c" />
+          <HeroStat label="Humidity" value={`${Math.round(v.current.humidityPct)}%`} />
+          <HeroStat label="Wind" value={windLabel(v.windKmh, units)} last />
         </div>
       </section>
 
-      {/* Safety verdict + when-to-go window (merged into one colour-coded card) */}
-      <section className={`mt-4 rounded-2xl border p-4 ${safety.card}`}>
-        <div className={`flex items-center gap-2 text-base font-semibold ${safety.dot}`}>
-          <SafetyIcon className="h-5 w-5 shrink-0" />
-          <span className="text-slate-900">{safety.label}</span>
-        </div>
-        <p className="mt-1 text-sm text-slate-700">{safety.sub}</p>
+      {/* ADAPTATION RING */}
+      <AdaptationRing
+        pct={p.adaptationPct}
+        daysLogged={p.daysLogged}
+        totalDays={p.totalDays}
+        currentDay={p.currentDay}
+        heatDoseMinutes={p.heatDoseMinutes}
+        fullAdaptLabel={p.fullAdaptLabel}
+        trend7Pct={p.trend7Pct}
+      />
 
-        {plan.exposureMinutesTarget > 0 && view!.goodWindows.length > 0 && (
-          <div className="mt-3 rounded-xl border border-white/70 bg-white/70 px-3 py-2.5">
-            <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-              {view!.goodWindows.length > 1 ? "Good windows to be outside" : "Best window to be outside"}
-            </div>
-            <div className="mt-2 flex flex-col gap-2">
-              {view!.goodWindows.map((w) => (
+      {/* SAFETY VERDICT + COOLER WINDOWS */}
+      <section className="rounded-[20px] p-4" style={{ background: safety.bg, border: `1px solid ${safety.border}` }}>
+        <div className="flex items-center gap-2">
+          <span style={{ color: safety.accent }} className="flex">
+            <SafetyIcon className="h-5 w-5 shrink-0" />
+          </span>
+          <span className="text-[16px] font-bold text-stone-900">{safety.label}</span>
+        </div>
+        <p className="mt-[7px] text-[13.5px] leading-[1.5] text-[#57534e]">{safety.sub}</p>
+
+        {plan.exposureMinutesTarget > 0 && v.goodWindows.length > 0 && (
+          <div className="mt-3 rounded-[14px] border border-white/90 bg-white/70 px-3 py-[11px]">
+            <div className="font-mono text-[9.5px] uppercase tracking-[.13em] text-[#78716c]">Cooler windows to be active</div>
+            <div className="mt-[9px] flex flex-col gap-[9px]">
+              {v.goodWindows.map((w) => (
                 <div key={w.period} className="flex items-center gap-2.5">
-                  <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${safety.chip}`}>
-                    {w.period === "evening" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+                  <span className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full" style={{ background: safety.chipBg, color: safety.chipInk }}>
+                    {w.period === "evening" ? <Moon className="h-[17px] w-[17px]" /> : <Sun className="h-[17px] w-[17px]" />}
                   </span>
                   <div className="min-w-0">
-                    <div className="flex items-baseline gap-1.5">
-                      <span className="text-base font-bold text-slate-900">
-                        {w.period === "morning" ? "Morning" : "Evening"} · {w.timeRange}
-                      </span>
-                      <span className={`text-sm font-semibold ${heatTextColor(w.feelsHighC)}`}>
-                        {fmtTempRange(w.feelsLowC, w.feelsHighC, units)}
-                      </span>
+                    <div className="text-[14.5px] font-bold text-stone-900">
+                      {w.period === "morning" ? "Morning" : "Evening"} · <span className="font-mono text-[13px]">{w.timeRange}</span>
                     </div>
-                    {w.isEstimate && (
-                      <div className="text-xs text-slate-400">Estimated — forecast not yet available</div>
-                    )}
+                    <div className="text-[12.5px] font-semibold text-[#c2410c]">
+                      feels {fmtTempRange(w.feelsLowC, w.feelsHighC, units)}
+                      {w.isEstimate && <span className="font-normal text-stone-400"> · est.</span>}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -209,20 +239,18 @@ export default function TodayPage() {
           </div>
         )}
 
-        {(view!.nowSafetyLevel === "CAUTION" || view!.nowSafetyLevel === "HARD_STOP") &&
-          plan.exposureMinutesTarget > 0 && (
-            <p className="mt-2 flex items-start gap-2 text-sm text-slate-600">
-              <Sun className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
-              <span>
-                It&apos;s {view!.nowSafetyLevel === "HARD_STOP" ? "dangerously hot" : "very hot"} right now (
-                {fmtTemp(view!.current.apparentTempC, units)}) — that&apos;s exactly why your session is
-                timed for the cooler window above, not this moment.
-              </span>
-            </p>
-          )}
+        {(v.nowSafetyLevel === "CAUTION" || v.nowSafetyLevel === "HARD_STOP") && plan.exposureMinutesTarget > 0 && (
+          <p className="mt-[11px] flex items-start gap-2 text-[12.5px] leading-[1.5] text-[#57534e]">
+            <Sun className="mt-0.5 h-[15px] w-[15px] shrink-0 text-amber-500" />
+            <span>
+              It&apos;s {v.nowSafetyLevel === "HARD_STOP" ? "dangerously hot" : "very hot"} right now (
+              {fmtTemp(v.current.apparentTempC, units)}) — that&apos;s exactly why your session is timed for the cooler window above, not this moment.
+            </span>
+          </p>
+        )}
 
         {plan.cautions.length > 0 && (
-          <ul className="mt-3 space-y-1 text-sm text-slate-700">
+          <ul className="mt-3 space-y-1 text-[13px] text-[#57534e]">
             {plan.cautions.map((c, i) => (
               <li key={i} className="flex gap-2">
                 <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-current opacity-40" />
@@ -233,101 +261,111 @@ export default function TodayPage() {
         )}
       </section>
 
-      <HeatClock timeline={view!.heatTimeline} units={units} />
+      {/* HEAT CURVE */}
+      <HeatClock curve={v.heatCurve} units={units} />
 
-      {plan.adjustmentFromYesterday && view!.yesterdayTargetMinutes != null && (
-        <div className="mt-4 flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white p-3 text-sm shadow-sm">
-          <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${ADJUST[plan.adjustmentFromYesterday].cls}`}>
-            {ADJUST[plan.adjustmentFromYesterday].text}
+      {/* TODAY'S PLAN */}
+      <section className={DC_CARD_WARM}>
+        <div className="flex items-center justify-between gap-2">
+          <span className={`${DC_MONO_HEAD} flex items-center gap-1.5 whitespace-nowrap text-[#ea580c]`}>
+            <Flame className="h-3.5 w-3.5" /> Today&apos;s plan
           </span>
-          <span className="text-slate-600">
-            Yesterday {view!.yesterdayTargetMinutes} min → <strong>{plan.exposureMinutesTarget} min</strong> today.
-          </span>
+          {plan.adjustmentFromYesterday && (
+            <span
+              className="whitespace-nowrap rounded-full px-[9px] py-[3px] text-[11px] font-bold"
+              style={{ background: ADJUST[plan.adjustmentFromYesterday].bg, color: ADJUST[plan.adjustmentFromYesterday].ink }}
+            >
+              {ADJUST[plan.adjustmentFromYesterday].text}
+            </span>
+          )}
         </div>
-      )}
-
-      {/* The plan — hero card */}
-      <section className="rise mt-4 rounded-3xl border border-orange-100 bg-white p-5 shadow-sm">
-        <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-orange-600">
-          <Flame className="h-3.5 w-3.5" /> Today&apos;s plan
-        </div>
-        <h2 className="mt-1 text-xl font-bold leading-snug text-slate-900">{plan.headline}</h2>
+        <h2 className="mt-[9px] text-[19px] font-bold leading-[1.25] tracking-[-.01em] text-stone-900">{plan.headline}</h2>
+        {plan.adjustmentFromYesterday && v.yesterdayTargetMinutes != null && (
+          <p className="mt-1 text-[12.5px] text-[#a8a29e]">
+            Yesterday {v.yesterdayTargetMinutes} min → <strong className="text-[#57534e]">{plan.exposureMinutesTarget} min</strong> today.
+          </p>
+        )}
 
         {plan.exposureMinutesTarget > 0 && (
           <div className="mt-3 flex flex-wrap gap-2">
-            <Pill icon={<Clock className="h-3.5 w-3.5" />}>{plan.exposureMinutesTarget} min</Pill>
-            <Pill icon={<Activity className="h-3.5 w-3.5" />}>{INTENSITY_LABEL[plan.intensity] ?? plan.intensity} effort</Pill>
-            <Pill icon={windowIsNight ? <Moon className="h-3.5 w-3.5" /> : <Sun className="h-3.5 w-3.5" />}>{plan.timeWindow}</Pill>
+            <PlanPill icon={<Clock className="h-3.5 w-3.5" />}>{plan.exposureMinutesTarget} min</PlanPill>
+            <PlanPill icon={<Activity className="h-3.5 w-3.5" />}>{INTENSITY_LABEL[plan.intensity] ?? plan.intensity}</PlanPill>
+            <PlanPill icon={<Sun className="h-3.5 w-3.5" />}>{plan.timeWindow}</PlanPill>
           </div>
         )}
 
-        <ol className="mt-4 space-y-2.5">
+        <ol className="mt-[15px] flex list-none flex-col gap-[11px] p-0">
           {plan.steps.map((s, i) => (
-            <li key={i} className="flex gap-3 text-slate-700">
-              <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-orange-100 text-xs font-bold text-orange-700">
+            <li key={i} className="flex items-start gap-[11px]">
+              <span className="flex h-[23px] w-[23px] shrink-0 items-center justify-center rounded-full bg-[#ffedd5] text-[12px] font-bold text-[#c2410c]">
                 {i + 1}
               </span>
-              <span className="pt-0.5">{s}</span>
+              <span className="text-[14px] leading-[1.45] text-[#44403c]">{s}</span>
             </li>
           ))}
         </ol>
 
-        <div className="mt-4 flex items-start gap-2 rounded-2xl bg-sky-50 px-3 py-2.5 text-sm text-sky-900">
-          <Droplet className="mt-0.5 h-4 w-4 shrink-0 text-sky-500" />
-          <span>
+        <div className="mt-3.5 flex items-start gap-[9px] rounded-[14px] border border-[#dbeafe] bg-[#eff6ff] px-3 py-2.5">
+          <Droplet className="mt-0.5 h-4 w-4 shrink-0 text-[#3b82f6]" />
+          <span className="text-[13px] leading-[1.5] text-[#1e40af]">
             <strong>Hydration:</strong> {plan.hydration}
           </span>
         </div>
       </section>
 
-      {/* The rest of the day — climate-aware recovery guidance */}
-      <section className="mt-4 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+      {/* REST OF DAY (recovery) */}
+      <section className={DC_CARD}>
         <div className="flex items-center justify-between gap-2">
-          <h3 className="flex items-center gap-1.5 text-sm font-semibold text-slate-700">
-            <Thermometer className="h-4 w-4 text-orange-500" /> The rest of your day
-          </h3>
-          <span className={`text-sm font-bold ${heatTextColor(view!.restOfDayPeakFeelsLikeC)}`}>
-            peaks ~{fmtTemp(view!.restOfDayPeakFeelsLikeC, units)}
-          </span>
+          <span className={DC_MONO_HEAD}>The rest of your day</span>
+          <span className="text-[13px] font-bold" style={{ color: "#c2410c" }}>peaks ~{fmtTemp(v.restOfDayPeakFeelsLikeC, units)}</span>
         </div>
-        <p className="mt-1 text-sm font-medium text-slate-800">{view!.restOfDay.title}</p>
-        <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          <div className="rounded-xl border border-sky-100 bg-sky-50/60 p-3">
-            <div className="flex items-center gap-1.5 text-sm font-semibold text-sky-800">
+        <p className="mt-1.5 text-[13px] font-medium text-[#44403c]">{v.restOfDay.title}</p>
+        <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
+          <div className="rounded-[14px] border border-sky-100 bg-sky-50/60 p-3">
+            <div className="flex items-center gap-1.5 text-[13px] font-semibold text-sky-800">
               <Home className="h-4 w-4" /> If you have AC / cooling
             </div>
-            <p className="mt-1 text-sm leading-relaxed text-slate-700">{view!.restOfDay.withAC}</p>
+            <p className="mt-1 text-[13px] leading-relaxed text-[#57534e]">{v.restOfDay.withAC}</p>
           </div>
-          <div className="rounded-xl border border-amber-100 bg-amber-50/60 p-3">
-            <div className="flex items-center gap-1.5 text-sm font-semibold text-amber-800">
+          <div className="rounded-[14px] border border-amber-100 bg-amber-50/60 p-3">
+            <div className="flex items-center gap-1.5 text-[13px] font-semibold text-amber-800">
               <Wind className="h-4 w-4" /> If you don&apos;t
             </div>
-            <p className="mt-1 text-sm leading-relaxed text-slate-700">{view!.restOfDay.withoutAC}</p>
+            <p className="mt-1 text-[13px] leading-relaxed text-[#57534e]">{v.restOfDay.withoutAC}</p>
           </div>
         </div>
-        <p className="mt-3 text-xs italic text-slate-500">{view!.restOfDay.recoveryNote}</p>
+        <p className="mt-3 text-[12px] italic text-[#a8a29e]">{v.restOfDay.recoveryNote}</p>
       </section>
 
-      {/* Why */}
-      <section className="mt-4 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-        <h3 className="text-sm font-semibold text-slate-700">Why today looks like this</h3>
-        <p className="mt-1 text-sm leading-relaxed text-slate-600">{plan.rationale}</p>
+      {/* WHY */}
+      <section className={DC_CARD}>
+        <span className={DC_MONO_HEAD}>Why today looks like this</span>
+        <p className="mt-1.5 text-[13px] leading-relaxed text-[#57534e]">{plan.rationale}</p>
       </section>
 
-      {/* Warning signs */}
-      <section className="mt-4 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-        <h3 className="flex items-center gap-1.5 text-sm font-semibold text-slate-700">
-          <Alert className="h-4 w-4 text-amber-500" /> Know the warning signs
-        </h3>
-        <div className="mt-3 grid gap-4 sm:grid-cols-2">
-          <RecognitionList title="Heat exhaustion" items={plan.recognition.heatExhaustion} tone="amber" />
-          <RecognitionList title="Heat stroke (emergency)" items={plan.recognition.heatStroke} tone="red" />
+      {/* 7-DAY FORECAST STRIP */}
+      <ForecastStrip days={p.forecastStrip} units={units} />
+
+      {/* PROGRESS TRENDS */}
+      <ProgressTrends state={state} />
+
+      {/* FULL PROGRAM (tap a day) */}
+      <ProgramSection view={p} units={units} />
+
+      {/* WARNING SIGNS */}
+      <section className={DC_CARD}>
+        <span className={`${DC_MONO_HEAD} flex items-center gap-1.5`}>
+          <Alert className="h-3.5 w-3.5" /> Know the warning signs
+        </span>
+        <div className="mt-3 grid grid-cols-2 gap-3.5">
+          <RecognitionList title="Heat exhaustion" items={plan.recognition.heatExhaustion} head="#b45309" />
+          <RecognitionList title="Heat stroke" items={plan.recognition.heatStroke} head="#b91c1c" />
         </div>
-        <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-3">
-          <div className="flex items-center gap-1.5 text-sm font-semibold text-red-800">
-            <Alert className="h-4 w-4" /> Stop and seek help now if:
+        <div className="mt-3.5 rounded-[14px] border border-[#fecaca] bg-[#fef2f2] px-3 py-[11px]">
+          <div className="flex items-center gap-1.5 text-[13px] font-bold text-[#b91c1c]">
+            <Alert className="h-[15px] w-[15px]" /> Stop and get help now if:
           </div>
-          <ul className="mt-1 list-disc space-y-0.5 pl-5 text-sm text-red-700">
+          <ul className="mt-1.5 list-disc pl-4 text-[12.5px] leading-[1.55] text-[#b91c1c]">
             {plan.recognition.stopNow.map((s, i) => (
               <li key={i}>{s}</li>
             ))}
@@ -335,23 +373,20 @@ export default function TodayPage() {
         </div>
       </section>
 
-      <ProgressTrends state={state} />
-
-      {program && <ProgramSection view={program} />}
-
       {process.env.NODE_ENV === "development" && (
-        <div className="mt-6 rounded-xl border border-dashed border-slate-300 p-3 text-center">
-          <span className="text-xs text-slate-400">🧪 Testing only —</span>
+        <div className="rounded-xl border border-dashed border-stone-300 p-3 text-center">
+          <span className="text-xs text-stone-400">🧪 Testing only —</span>
           <button
             onClick={() => update({ ...state, dayOffset: (state.dayOffset ?? 0) + 1 })}
-            className="ml-1 rounded-lg bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700 hover:bg-slate-200"
+            className="ml-1 rounded-lg bg-stone-100 px-3 py-1 text-sm font-medium text-stone-700 hover:bg-stone-200"
           >
             Simulate next day →
           </button>
         </div>
       )}
 
-      <div className="sticky bottom-4 mt-8 flex flex-col gap-2">
+      {/* STICKY CTA */}
+      <div className="sticky bottom-3 mt-1 flex flex-col gap-2">
         {loggedToday && (
           <p className="rounded-xl bg-emerald-50 px-3 py-1.5 text-center text-xs font-medium text-emerald-700 shadow-sm">
             ✓ Logged today — come back tomorrow for your next plan
@@ -359,14 +394,24 @@ export default function TodayPage() {
         )}
         <Link
           href="/log"
-          className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-orange-500 to-orange-600 px-5 py-3.5 text-center font-semibold text-white shadow-lg shadow-orange-600/20 transition hover:from-orange-600 hover:to-orange-700"
+          className="flex items-center justify-center gap-2 rounded-[16px] p-[15px] text-[15px] font-bold text-white shadow-[0_12px_26px_-10px_rgba(234,88,12,.6)]"
+          style={{ background: "linear-gradient(135deg,#f97316,#ea580c)" }}
         >
           {loggedToday ? "Update today's check-in" : "Log how today went"}
-          <ArrowRight className="h-4 w-4" />
+          <ArrowRight className="h-[17px] w-[17px]" />
         </Link>
       </div>
 
-      <p className="mt-6 text-center text-xs text-slate-400">{plan.disclaimer}</p>
+      <p className="mt-1 text-center text-[11px] leading-[1.5] text-[#a8a29e]">{plan.disclaimer}</p>
+      <button
+        onClick={() => {
+          reset();
+          router.push("/onboarding");
+        }}
+        className="mx-auto text-[11px] text-stone-400 underline-offset-2 hover:text-stone-600 hover:underline"
+      >
+        Start over
+      </button>
     </main>
   );
 }
@@ -380,33 +425,29 @@ function Centered({ children }: { children: React.ReactNode }) {
   );
 }
 
-function HeroStat({ icon, label, value, valueClass }: { icon: React.ReactNode; label: string; value: string; valueClass?: string }) {
+function HeroStat({ label, value, valueColor, last }: { label: string; value: string; valueColor?: string; last?: boolean }) {
   return (
-    <div className="px-2 py-3 text-center">
-      <div className="flex items-center justify-center gap-1 text-[11px] font-medium uppercase tracking-wide text-slate-400">
-        <span className="text-slate-300">{icon}</span>
-        {label}
-      </div>
-      <div className={`mt-0.5 text-xl font-bold ${valueClass ?? "text-slate-900"}`}>{value}</div>
+    <div className={`px-1.5 py-3 text-center ${last ? "" : "border-r border-[#f4ead9]"}`}>
+      <div className="font-mono text-[9px] uppercase tracking-[.1em] text-[#a8a29e]">{label}</div>
+      <div className="mt-[3px] text-[19px] font-bold" style={{ color: valueColor ?? "#1c1917" }}>{value}</div>
     </div>
   );
 }
 
-function Pill({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
+function PlanPill({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-50 px-3 py-1.5 text-sm font-medium text-orange-800 ring-1 ring-orange-100">
-      <span className="text-orange-500">{icon}</span>
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-[#fde6cf] bg-[#fff7ed] px-[11px] py-1.5 text-[13px] font-semibold text-[#9a3412]">
+      <span className="text-[#f97316]">{icon}</span>
       {children}
     </span>
   );
 }
 
-function RecognitionList({ title, items, tone }: { title: string; items: string[]; tone: "amber" | "red" }) {
-  const head = tone === "red" ? "text-red-700" : "text-amber-700";
+function RecognitionList({ title, items, head }: { title: string; items: string[]; head: string }) {
   return (
     <div>
-      <div className={`text-sm font-semibold ${head}`}>{title}</div>
-      <ul className="mt-1 list-disc space-y-0.5 pl-5 text-sm text-slate-600">
+      <div className="text-[13px] font-bold" style={{ color: head }}>{title}</div>
+      <ul className="mt-1.5 list-disc pl-4 text-[12.5px] leading-[1.55] text-[#57534e]">
         {items.map((it, i) => (
           <li key={i}>{it}</li>
         ))}

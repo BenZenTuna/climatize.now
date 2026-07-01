@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { fmtTemp, fmtTempRange, heatTextColor } from "@/lib/units";
-import { ChevronDown, Droplet, Sparkle } from "@/app/icons";
+import { ChevronDown, Droplet } from "@/app/icons";
+import { DC_CARD, DC_MONO_HEAD } from "@/app/dc-styles";
 import type { ProgramView, ProgramDay } from "@/lib/client-program";
 import type { Intensity, Units } from "@/lib/physiology/types";
 
@@ -19,49 +20,26 @@ function intensityWord(i: Intensity): string {
   return i === "REST" ? "passive" : i === "MODERATE" ? "light–moderate" : "light";
 }
 
-/** "Your program": adaptation meter + the rest of the days (today is shown in full above). */
-export function ProgramSection({ view }: { view: ProgramView }) {
+/** "Your program": the rest of the days (today is shown in full above; the ring covers adaptation). */
+export function ProgramSection({ view, units }: { view: ProgramView; units: Units }) {
   const days = view.days.filter((d) => d.state !== "TODAY");
   if (days.length === 0) return null;
 
   return (
-    <section className="mt-8">
-      <h2 className="text-lg font-bold text-slate-900">Your program</h2>
-
-      <div className="mt-3 rounded-2xl border border-orange-100 bg-white p-4 shadow-sm">
-        <div className="flex items-center justify-between">
-          <span className="flex items-center gap-1.5 text-sm font-semibold text-slate-700">
-            <Sparkle className="h-4 w-4 text-orange-500" /> Adaptation
-          </span>
-          <span className="text-sm font-medium text-slate-500">
-            Day {view.currentDay + 1} of {view.totalDays}
-          </span>
-        </div>
-        <div className="mt-2 h-3 w-full overflow-hidden rounded-full bg-orange-50">
-          <div
-            className="h-full rounded-full bg-gradient-to-r from-amber-400 to-orange-500 transition-all"
-            style={{ width: `${Math.max(4, view.adaptationPct)}%` }}
-          />
-        </div>
-        <div className="mt-1.5 text-xs text-slate-500">
-          <strong className="text-slate-700">{view.adaptationPct}%</strong> of the way to full
-          adaptation — this slips if you skip days.
-        </div>
-      </div>
-
-      <p className="mt-3 rounded-2xl border border-sky-100 bg-sky-50 p-3 text-sm text-sky-900">
-        These are <strong>projected</strong> — future days are estimates that change with your
-        progress, the live weather, and how you feel.
+    <section className={DC_CARD}>
+      <span className={DC_MONO_HEAD}>Your program</span>
+      <p className="mt-1.5 text-[12px] leading-[1.45] text-[#a8a29e]">
+        Projected — future days change with your progress, the live weather, and how you feel. Tap any
+        day for its full plan.
       </p>
 
-      <p className="mt-3 text-xs text-slate-400">Tap any day to see its full plan.</p>
-      <ol className="mt-2 space-y-2">
+      <ol className="mt-3 space-y-2">
         {days.map((d) => (
-          <DayRow key={d.programDay} d={d} units={view.units} />
+          <DayRow key={d.programDay} d={d} units={units} />
         ))}
       </ol>
 
-      <div className="mt-4 flex flex-wrap gap-3 text-xs text-slate-500">
+      <div className="mt-3 flex flex-wrap gap-3 text-[11px] text-[#78716c]">
         {Object.values(OUTLOOK).map((o) => (
           <span key={o.label} className="flex items-center gap-1">
             <span className={`h-2 w-2 rounded-full ${o.dot}`} />

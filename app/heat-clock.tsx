@@ -1,129 +1,103 @@
 "use client";
 
-import { useState } from "react";
-import { Clock } from "@/app/icons";
-import { fmtTemp } from "@/lib/units";
-import type { HeatHour } from "@/lib/client-program";
-import type { SafetyLevel, Units } from "@/lib/physiology/types";
-
-const BAR: Record<SafetyLevel, string> = {
-  NORMAL: "bg-emerald-400",
-  CAUTION: "bg-amber-400",
-  HARD_STOP: "bg-red-500",
-};
-const WORD: Record<SafetyLevel, string> = {
-  NORMAL: "Good to move",
-  CAUTION: "Caution — keep it easy",
-  HARD_STOP: "Too hot — shelter",
-};
-const TEXT: Record<SafetyLevel, string> = {
-  NORMAL: "text-emerald-600",
-  CAUTION: "text-amber-600",
-  HARD_STOP: "text-red-600",
-};
-
-function hourLabel(h: number): string {
-  const period = h < 12 ? "am" : "pm";
-  const hr = h % 12 === 0 ? 12 : h % 12;
-  return `${hr}${period}`;
-}
+import { DC_CARD, DC_MONO_HEAD } from "@/app/dc-styles";
+import type { HeatCurve } from "@/lib/client-program";
+import type { Units } from "@/lib/physiology/types";
 
 /**
- * The "heat clock": today's hour-by-hour feels-like curve. Bar height = how hot it
- * feels, colour = how safe that hour is, and the recommended cool window is
- * outlined. Tap any hour for its detail (defaults to "now"), so the timing of the
- * plan — exercise in the cool window, not the midday peak — is visible at a glance.
+ * The heat curve: today's hour-by-hour feels-like as an area+line chart. The shaded
+ * green bands are the recommended cool windows, dashed lines mark the caution (32°)
+ * and danger (39°) thresholds, and "NOW" is pinned to the current hour — so the
+ * timing message (be active in the cool window, not the midday peak) is visual.
+ * Ported from the Today Dashboard design.
  */
-export function HeatClock({ timeline, units }: { timeline: HeatHour[]; units: Units }) {
-  const defaultHour =
-    timeline.find((t) => t.isNow)?.hour ??
-    timeline.find((t) => !t.isPast)?.hour ??
-    timeline[0]?.hour ??
-    12;
-  const [selHour, setSelHour] = useState(defaultHour);
+export function HeatClock({ curve, units }: { curve: HeatCurve; units: Units }) {
+  const { feelsC: feels, windows, nowHour } = curve;
+  const deg = (c: number) => `${Math.round(units === "F" ? (c * 9) / 5 + 32 : c)}°`;
 
-  if (timeline.length === 0) return null;
+  const W = 680, H = 250, pL = 12, pR = 12, pT = 20, pB = 30;
+  const n = feels.length, lo = 20, hi = 43, base = H - pB;
+  const bx = (i: number) => pL + (i / (n - 1)) * (W - pL - pR);
+  const by = (v: number) => pT + (1 - (v - lo) / (hi - lo)) * (H - pT - pB);
+  const hourLabel = (hh: number) => `${hh % 12 === 0 ? 12 : hh % 12}${hh < 12 ? "a" : "p"}`;
 
-  const his = timeline.map((t) => t.heatIndexC);
-  const min = Math.min(...his);
-  const span = Math.max(1, Math.max(...his) - min);
-  const heightPct = (hi: number) => 30 + ((hi - min) / span) * 70;
-
-  const sel = timeline.find((t) => t.hour === selHour) ?? timeline[0];
+  const pts = feels.map((v, i) => `${bx(i).toFixed(1)},${by(v).toFixed(1)}`);
+  const line = "M" + pts.join(" L");
+  const area = `M${bx(0).toFixed(1)},${base} L${pts.join(" L")} L${bx(n - 1).toFixed(1)},${base} Z`;
+  const now = Math.max(0, Math.min(n - 1, nowHour));
+  const nx = bx(now), ny = by(feels[now]);
+  const refs: [number, string][] = [[32, "#d97706"], [39, "#dc2626"]];
 
   return (
-    <section className="mt-4 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-      <h3 className="flex items-center gap-1.5 text-sm font-semibold text-slate-700">
-        <Clock className="h-4 w-4 text-orange-500" /> Today&apos;s heat, hour by hour
-      </h3>
+    <section className={DC_CARD}>
+      <div className="flex items-baseline justify-between">
+        <span className={`${DC_MONO_HEAD} whitespace-nowrap`}>Today&apos;s heat · hourly</span>
+        <span className="whitespace-nowrap font-mono text-[10px] text-[#a8a29e]">feels-like</span>
+      </div>
 
-      {/* selected-hour detail — defaults to "now", updates on tap */}
-      <p className="mt-1 text-sm text-slate-600">
-        <span className="font-semibold text-slate-900">
-          {sel.isNow ? "Now" : hourLabel(sel.hour)}
+      <div className="mt-3">
+        <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "auto", display: "block" }}>
+          <defs>
+            <linearGradient id="hcArea" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#f97316" stopOpacity={0.42} />
+              <stop offset="55%" stopColor="#fb923c" stopOpacity={0.14} />
+              <stop offset="100%" stopColor="#fb923c" stopOpacity={0} />
+            </linearGradient>
+            <linearGradient id="hcLine" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stopColor="#f59e0b" />
+              <stop offset="55%" stopColor="#f97316" />
+              <stop offset="100%" stopColor="#ea580c" />
+            </linearGradient>
+          </defs>
+
+          {windows.map((w, i) => (
+            <rect key={`w${i}`} x={bx(w[0])} y={pT} width={bx(w[1]) - bx(w[0])} height={base - pT} fill="#059669" opacity={0.1} rx={5} />
+          ))}
+          {refs.map(([v, c], i) => (
+            <g key={`r${i}`}>
+              <line x1={pL} x2={W - pR} y1={by(v)} y2={by(v)} stroke={c} strokeWidth={1} strokeDasharray="2 6" opacity={0.5} />
+              <text x={pL + 2} y={by(v) - 5} fontFamily='"Space Mono", monospace' fontSize={12} fill={c} opacity={0.85}>{deg(v)}</text>
+            </g>
+          ))}
+
+          <path d={area} fill="url(#hcArea)" />
+          <path d={line} fill="none" stroke="url(#hcLine)" strokeWidth={3} strokeLinejoin="round" strokeLinecap="round" />
+
+          {windows.map((w, i) => (
+            <line key={`wt${i}`} x1={bx(w[0])} x2={bx(w[1])} y1={pT + 2} y2={pT + 2} stroke="#059669" strokeWidth={3} strokeLinecap="round" />
+          ))}
+
+          <line x1={nx} x2={nx} y1={pT} y2={base} stroke="#1c1917" strokeWidth={1.5} strokeDasharray="4 4" opacity={0.45} />
+          <circle cx={nx} cy={ny} r={6} fill="#ea580c" stroke="#fff" strokeWidth={3} />
+          <text x={Math.min(nx, W - 74)} y={pT - 6} fontFamily='"Space Mono", monospace' fontSize={12} fontWeight={700} fill="#1c1917">
+            {`NOW ${deg(feels[now])}`}
+          </text>
+
+          {[0, 6, 12, 18].map((hh) => (
+            <text key={`x${hh}`} x={bx(hh)} y={H - 8} textAnchor="middle" fontFamily='"Space Mono", monospace' fontSize={12} fill="#a8a29e">
+              {hourLabel(hh)}
+            </text>
+          ))}
+        </svg>
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-x-3.5 gap-y-1.5 text-[11px] text-[#78716c]">
+        <span className="flex items-center gap-1.5">
+          <span className="h-[9px] w-[14px] rounded-[3px] border-t-2 border-[#059669] bg-[#05966922]" /> Cool window
         </span>
-        {" · feels "}
-        <span className="font-semibold">{fmtTemp(sel.heatIndexC, units)}</span>
-        {" · "}
-        <span className={TEXT[sel.level]}>{WORD[sel.level]}</span>
-        {sel.inWindow && <span className="font-medium text-orange-600"> · your window</span>}
-      </p>
-
-      {/* bars */}
-      <div className="mt-3 flex h-24 items-end gap-[3px]">
-        {timeline.map((t) => (
-          <button
-            key={t.hour}
-            type="button"
-            onClick={() => setSelHour(t.hour)}
-            aria-label={`${hourLabel(t.hour)}, feels ${fmtTemp(t.heatIndexC, units)}, ${WORD[t.level]}`}
-            aria-pressed={t.hour === selHour}
-            className="flex h-full flex-1 flex-col justify-end"
-          >
-            <span
-              className={`w-full rounded-t transition-all ${BAR[t.level]} ${
-                t.isPast ? "opacity-40" : ""
-              } ${t.inWindow ? "ring-2 ring-orange-400" : ""} ${
-                t.hour === selHour ? "outline outline-2 outline-slate-700" : ""
-              }`}
-              style={{ height: `${heightPct(t.heatIndexC)}%` }}
-            />
-          </button>
-        ))}
-      </div>
-
-      {/* hour ticks (6am / 12pm / 6pm, plus a "now" marker) */}
-      <div className="mt-1 flex gap-[3px]">
-        {timeline.map((t) => (
-          <span key={t.hour} className="flex-1 text-center text-[9px] leading-none text-slate-400">
-            {t.isNow ? "now" : [6, 12, 18].includes(t.hour) ? hourLabel(t.hour) : ""}
-          </span>
-        ))}
-      </div>
-
-      <p className="mt-3 text-xs text-slate-500">
-        Bar height is how hot it feels; colour is how safe it is. The{" "}
-        <span className="font-medium text-orange-600">outlined</span> hours are your cooler window to
-        be active — not the midday peak.
-      </p>
-
-      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-slate-500">
-        <Legend cls="bg-emerald-400" label="Good to move" />
-        <Legend cls="bg-amber-400" label="Caution" />
-        <Legend cls="bg-red-500" label="Too hot" />
-        <span className="flex items-center gap-1">
-          <span className="h-2.5 w-2.5 rounded-sm ring-2 ring-orange-400" /> your window
+        <span className="flex items-center gap-1.5">
+          <span className="w-[14px] border-t-2 border-dashed border-[#d97706]" /> Caution
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-[14px] border-t-2 border-dashed border-[#dc2626]" /> Danger
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="h-[9px] w-[9px] rounded-full border-2 border-white bg-[#ea580c] shadow-[0_0_0_1px_#ea580c]" /> Now
         </span>
       </div>
+      <p className="mt-2.5 text-[12px] leading-[1.5] text-[#78716c]">
+        The shaded band is your cool window — effort belongs there, not at the midday peak.
+      </p>
     </section>
-  );
-}
-
-function Legend({ cls, label }: { cls: string; label: string }) {
-  return (
-    <span className="flex items-center gap-1">
-      <span className={`h-2.5 w-2.5 rounded-sm ${cls}`} />
-      {label}
-    </span>
   );
 }

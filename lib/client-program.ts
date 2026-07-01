@@ -145,14 +145,11 @@ function computeRestOfDay(mdf: MultiDayForecast): {
 // Today
 // ---------------------------------------------------------------------------
 
-/** One hour of today's heat curve, for the visual "heat clock". */
-export interface HeatHour {
-  hour: number; // 0–23 local
-  heatIndexC: number; // feels-like at that hour
-  level: SafetyLevel; // how safe that hour is (tightened for the user's risk)
-  isNow: boolean; // the current hour
-  isPast: boolean; // earlier than now (dimmed in the UI)
-  inWindow: boolean; // part of a recommended good window today
+/** Today's full-day feels-like curve (24 hourly values) for the heat-curve chart. */
+export interface HeatCurve {
+  feelsC: number[]; // length 24, index = local hour; raw °C (chart converts for display)
+  windows: [number, number][]; // cool-window hour spans to shade [startHour, endHour]
+  nowHour: number; // 0–23
 }
 
 export interface TodayView {
@@ -160,8 +157,9 @@ export interface TodayView {
   plan: DayPlanResult;
   current: HeatConditions;
   currentLabel: string;
+  windKmh: number; // current wind speed for the hero
   goodWindows: WindowDisplay[]; // morning + evening slots with time ranges and temps
-  heatTimeline: HeatHour[]; // today's hour-by-hour heat curve for the heat clock
+  heatCurve: HeatCurve; // today's hour-by-hour feels-like curve
   windowConditions: HeatConditions;
   peakFeelsLikeC: number; // the day's hottest heat index
   nowSafetyLevel: SafetyLevel; // how dangerous it is RIGHT NOW (vs the safe window)
@@ -172,27 +170,32 @@ export interface TodayView {
 }
 
 /**
- * Today's hour-by-hour heat curve (waking hours 5am–11pm) for the heat clock:
- * each hour's feels-like + safety level, whether it's now/past, and whether it
- * falls in one of today's recommended good windows (so the UI can highlight them).
+ * Today's hour-by-hour feels-like curve (all 24 hours, index = local hour) plus the
+ * recommended cool-window spans and the current hour — for the heat-curve chart.
+ * Any gaps are filled forward/back so the line stays continuous.
  */
-function buildHeatTimeline(mdf: MultiDayForecast, tighten: number): HeatHour[] {
+function buildHeatCurve(mdf: MultiDayForecast, tighten: number): HeatCurve {
   const today = mdf.days[0];
-  const windowHours = new Set<number>();
-  for (const w of findGoodWindows(today.hours, tighten)) {
-    for (let h = w.startHour; h <= w.endHour; h++) windowHours.add(h);
+  const raw = new Array<number | null>(24).fill(null);
+  for (const p of today.hours) {
+    if (p.hour >= 0 && p.hour < 24) raw[p.hour] = p.conditions.heatIndexC;
   }
-  const nowHour = mdf.now.hour;
-  return today.hours
-    .filter((p) => p.hour >= 5 && p.hour <= 23)
-    .map((p) => ({
-      hour: p.hour,
-      heatIndexC: p.conditions.heatIndexC,
-      level: evaluateEnvironment(p.conditions, tighten).level,
-      isNow: p.hour === nowHour,
-      isPast: p.hour < nowHour,
-      inWindow: windowHours.has(p.hour),
-    }));
+  let last: number | null = null;
+  for (let i = 0; i < 24; i++) {
+    if (raw[i] != null) last = raw[i];
+    else raw[i] = last;
+  }
+  let next: number | null = null;
+  for (let i = 23; i >= 0; i--) {
+    if (raw[i] != null) next = raw[i];
+    else raw[i] = next;
+  }
+  const feelsC = raw.map((v) => v ?? 25);
+
+  const windows = findGoodWindows(today.hours, tighten).map(
+    (w) => [w.startHour, w.endHour] as [number, number],
+  );
+  return { feelsC, windows, nowHour: mdf.now.hour };
 }
 
 export async function buildTodayView(state: AppState): Promise<TodayView> {
@@ -203,7 +206,7 @@ export async function buildTodayView(state: AppState): Promise<TodayView> {
   const today = mdf.days[0];
   const window = pickUpcomingWindow(mdf, tighten);
   const todayGoodWindows = findUpcomingGoodWindows(mdf, tighten);
-  const heatTimeline = buildHeatTimeline(mdf, tighten);
+  const heatCurve = buildHeatCurve(mdf, tighten);
   const restOfDay = computeRestOfDay(mdf);
 
   // The day's PEAK heat is the real adaptation challenge (the gap); exposure is
@@ -232,8 +235,9 @@ export async function buildTodayView(state: AppState): Promise<TodayView> {
     plan,
     current: mdf.now.conditions,
     currentLabel: state.current.label,
+    windKmh: mdf.nowWindKmh,
     goodWindows: todayGoodWindows,
-    heatTimeline,
+    heatCurve,
     windowConditions: window.point.conditions,
     peakFeelsLikeC: dayPeakHeatIndexC,
     nowSafetyLevel: evaluateEnvironment(mdf.now.conditions, tighten).level,
@@ -276,12 +280,25 @@ export interface ProgramDay {
   detail: DayDetail | null; // null for past days (no stored plan)
 }
 
+/** One day in the 7-day forecast heat-strip. */
+export interface ForecastDay {
+  label: string; // "Today" | "Wed" | …
+  maxFeelsC: number; // the day's peak feels-like
+  outlook: Outlook; // window feasibility (GOOD/TOUGH/SHELTER)
+  isToday: boolean;
+}
+
 export interface ProgramView {
   persona: Persona;
   currentDay: number;
   totalDays: number;
   adaptationDays: number;
   adaptationPct: number;
+  daysLogged: number; // days with a completed log
+  heatDoseMinutes: number; // cumulative completed exposure minutes
+  fullAdaptLabel: string; // projected "~Jul 9" date full adaptation is reached
+  trend7Pct: number; // change in adaptation % over the last 7 days
+  forecastStrip: ForecastDay[]; // next 7 days' peak feels-like + outlook
   units: Units;
   currentLabel: string;
   days: ProgramDay[];
@@ -314,6 +331,10 @@ function fmtDateLabel(isoDate: string): string {
     month: "short",
     day: "numeric",
   });
+}
+
+function fmtWeekday(isoDate: string): string {
+  return new Date(`${isoDate}T12:00:00`).toLocaleDateString("en-US", { weekday: "short" });
 }
 
 export async function buildProgramView(state: AppState): Promise<ProgramView> {
@@ -404,7 +425,31 @@ export async function buildProgramView(state: AppState): Promise<ProgramView> {
     });
   }
 
-  const adaptationPct = Math.round(Math.min(1, todayAdaptation / personaRampDays(persona)) * 100);
+  const rampDays = personaRampDays(persona);
+  const adaptationPct = Math.round(Math.min(1, todayAdaptation / rampDays) * 100);
+
+  // Ring stats, all from real state / forecast.
+  const daysLogged = Object.values(state.logs).filter((l) => l?.completedExposure).length;
+  let heatDoseMinutes = 0;
+  for (let d = 0; d < currentDay; d++) {
+    if (state.logs[d]?.completedExposure) heatDoseMinutes += state.history[d]?.targetMinutes ?? 0;
+  }
+  const remainingAdaptDays = Math.max(0, rampDays - todayAdaptation);
+  let fullAdaptLabel = "reached";
+  if (remainingAdaptDays > 0) {
+    const dt = new Date();
+    dt.setDate(dt.getDate() + Math.ceil(remainingAdaptDays / PROJECTED_DAILY_GAIN));
+    fullAdaptLabel = "~" + dt.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  }
+  const prior7 = adaptationAfter(state, Math.max(0, currentDay - 7));
+  const trend7Pct = adaptationPct - Math.round(Math.min(1, prior7 / rampDays) * 100);
+
+  const forecastStrip: ForecastDay[] = forecast.days.slice(0, 7).map((fday, i) => ({
+    label: i === 0 ? "Today" : fmtWeekday(fday.date),
+    maxFeelsC: fday.peak.heatIndexC,
+    outlook: outlookFrom(evaluateEnvironment(fday.safeWindow.point.conditions, tighten).level),
+    isToday: i === 0,
+  }));
 
   return {
     persona,
@@ -412,6 +457,11 @@ export async function buildProgramView(state: AppState): Promise<ProgramView> {
     totalDays,
     adaptationDays: todayAdaptation,
     adaptationPct,
+    daysLogged,
+    heatDoseMinutes,
+    fullAdaptLabel,
+    trend7Pct,
+    forecastStrip,
     units: state.units,
     currentLabel: state.current.label,
     days,

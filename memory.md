@@ -5,6 +5,37 @@ Newest entry at the top.
 
 ---
 
+## 2026-07-01 — Today Dashboard visual redesign (from Claude Design)
+
+Owner imported a Claude Design mockup (`Today Dashboard.dc.html`, project
+`df9cdc86-417c-4ec1-a156-4e01d50818fb` "Climatize.now platform review", read via the
+DesignSync MCP) and asked to implement it. Full Today-page redesign to that mockup, wired to
+REAL data (not the mockup's demo values), no loss of existing features (decisions D32). 75
+tests + tsc + static build clean; data verified live vs Slivo Pole.
+- **Type system**: swapped Geist → **Space Grotesk** (body) + **Space Mono** (mono labels) via
+  `next/font/google` (`layout.tsx`, `globals.css` `--font-sans/--font-mono`). Background
+  gradient already matched the design. New `app/dc-styles.ts` holds shared card/mono class
+  tokens (`DC_CARD`, `DC_CARD_WARM`, `DC_MONO_HEAD`, `DC_MONO_SMALL`).
+- **New components**: `app/adaptation-ring.tsx` (circular gauge + stats: days done / heat dose /
+  full-adapt date / 7-day trend), `app/forecast-strip.tsx` (next-7-days heat bars + outlook
+  dots, continuous heat→colour ramp). **Rewrote `app/heat-clock.tsx`** from the bar version to
+  the design's **area+line curve** (shaded cool-window bands, 32°/39° dashed thresholds, NOW
+  marker, hour ticks). Restyled `app/progress-trends.tsx` (area-spark card grid) and
+  `app/program-list.tsx` (dropped the linear meter — the ring replaces it — restyled to a
+  `DC_CARD`, now takes a `units` prop).
+- **Today page** (`app/today/page.tsx`) fully rebuilt to the mockup: header w/ logo + **working
+  °C/°F toggle** (persists to `state.units`, live re-render, no refetch — renders with
+  `state.units`), hero with a **new Wind stat**, ring, safety+cool-windows card, heat curve,
+  plan card (adjustment badge inline), forecast strip, progress, warning signs, sticky CTA.
+  **Kept** the rest-of-day recovery + "why" cards + full program list + Start-over (restyled) —
+  the mockup omitted them but they're real features.
+- **Data**: added `wind_speed_10m` to the Open-Meteo `current` fetch → `MultiDayForecast
+  .nowWindKmh` → `TodayView.windKmh`. Replaced `TodayView.heatTimeline` (bars) with
+  `heatCurve {feelsC[24], windows, nowHour}`. Added to `ProgramView`: `daysLogged`,
+  `heatDoseMinutes`, `fullAdaptLabel` (projected date), `trend7Pct` (7-day adaptation delta),
+  `forecastStrip: ForecastDay[]` — all computed from real state/forecast. `WindowDisplay` still
+  carries `startHour/endHour` (from the earlier heat-clock work); curve windows reuse them.
+
 ## 2026-06-30 — Heat clock (visual day timeline) + program-list mobile fix
 
 Owner picked suggestion #3 (from a platform-review brainstorm) and reported a mobile layout
