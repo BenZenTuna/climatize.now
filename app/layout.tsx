@@ -19,17 +19,53 @@ const spaceMono = Space_Mono({
   subsets: ["latin"],
 });
 
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || "https://climatize.now";
+
 export const metadata: Metadata = {
-  title: "climatize.now — your daily heat-adaptation plan",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "climatize.now — your daily heat-adaptation plan",
+    template: "%s — climatize.now",
+  },
   description:
-    "A personalized, weather-driven plan to adapt to heat safely. No accounts, no tracking. Wellness guidance, not medical advice.",
+    "A personalized, weather-driven plan to adapt to heat safely. No accounts, no tracking. Free forever. Wellness guidance, not medical advice.",
+  keywords: [
+    "heat acclimatization",
+    "heat adaptation",
+    "heat safety",
+    "daily heat plan",
+    "weather-based fitness",
+    "heat exhaustion prevention",
+    "outdoor heat training",
+    "climate adaptation",
+    "personalized heat plan",
+  ],
+  authors: [{ name: "Taner", url: "https://tunas.me/taner/" }],
+  creator: "Taner",
   manifest: "/manifest.webmanifest",
   appleWebApp: { capable: true, title: "climatize.now", statusBarStyle: "default" },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, "max-image-preview": "large" },
+  },
   openGraph: {
     title: "climatize.now — your daily heat-adaptation plan",
-    description: "A personalized, weather-driven plan to adapt to heat safely.",
+    description:
+      "A personalized, weather-driven plan to adapt to heat safely. No accounts, no tracking. Free forever.",
     type: "website",
-    images: ["/icon-512.png"],
+    url: SITE_URL,
+    siteName: "climatize.now",
+    locale: "en_US",
+    images: [{ url: "/og.png", width: 1200, height: 630, alt: "climatize.now — your daily heat-adaptation plan" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "climatize.now — your daily heat-adaptation plan",
+    description:
+      "A personalized, weather-driven plan to adapt to heat safely. No accounts, no tracking.",
+    images: ["/og.png"],
   },
 };
 

@@ -5,6 +5,26 @@ Newest entry at the top.
 
 ---
 
+## 2026-07-01 — SEO & social sharing (OG image + full metadata)
+
+Full search-engine and social-sharing layer added; static build clean.
+- **`app/opengraph-image.tsx`** — generates a branded 1200×630 PNG at build time using
+  `ImageResponse` (with `export const dynamic = "force-static"` for static-export
+  compatibility). Design: dark orange-amber radial gradient, climatize.now wordmark, sun SVG
+  icon with glow, tagline, four pill badges ("No accounts", "No tracking", "Science-based",
+  "Safety first"). Output: `dist/opengraph-image` (PNG binary).
+- **`layout.tsx` metadata** expanded: `metadataBase` (reads `NEXT_PUBLIC_SITE_URL` env var,
+  falls back to `https://climatize.now`), `title.template` (`%s — climatize.now`), `keywords`,
+  `authors`, `creator`, `robots` (index/follow + googlebot max-image-preview:large), complete
+  `openGraph` (url, siteName, locale en_US, image with dimensions + alt), `twitter` card
+  (summary_large_image with image).
+- **`app/sitemap.ts`** — XML sitemap (/, /how-it-works, /about, /privacy); priorities 1.0→0.4;
+  `force-static` required.
+- **`app/robots.ts`** — robots.txt (allow all, sitemap pointer); `force-static` required.
+- **Production URL**: set `NEXT_PUBLIC_SITE_URL=https://your-domain.com` before `pnpm build`
+  so all canonical/OG/sitemap URLs resolve correctly. Without it they fall back to
+  `https://climatize.now`.
+
 ## 2026-07-01 — About page
 
 Added `app/about/page.tsx` (static, trust-page style) + an "About" link in the layout footer
