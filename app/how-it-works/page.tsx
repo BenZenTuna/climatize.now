@@ -113,10 +113,20 @@ export default function HowItWorks() {
           </p>
           <p>
             So every plan includes <strong>climate-specific guidance for the rest of the day</strong>,
-            with and without air conditioning. One detail that matters: once the <em>air</em> is hotter
-            than your skin (roughly 35°C / 95°F), an electric fan stops cooling you and can speed
-            dehydration — so in extreme heat we tell you to wet your skin so moving air still helps,
-            take cool showers, and seek a cooler space, rather than rely on a fan alone.
+            with and without air conditioning. Whether a fan helps depends on{" "}
+            <strong>both temperature and humidity</strong>: in humid heat, moving air keeps cooling you
+            well past skin temperature because it drives evaporation from wet skin — but in hot,{" "}
+            <em>dry</em> air (very roughly above 35°C / 95°F, and higher when it&apos;s humid) a fan alone
+            can stop cooling and even speed dehydration. So we tell you when to wet your skin so moving
+            air still helps, take cool showers, and seek a cooler space, rather than rely on a fan alone.
+          </p>
+          <p>
+            <strong>Nights matter too.</strong> Adapting well depends on shedding the day&apos;s heat
+            overnight and sleeping — and humidity is what quietly prevents that: a high dew point keeps
+            nights warm and sticky, so the air never really cools and sweat can&apos;t evaporate at rest.
+            When tonight won&apos;t cool off we flag it and nudge you toward a cooler sleeping space; and
+            if you sleep badly in the heat, the next morning&apos;s check-in eases your plan
+            automatically.
           </p>
         </Section>
 
@@ -163,6 +173,14 @@ export default function HowItWorks() {
               Scand. J. Med. Sci. Sports (timeline ~7–14 days; decay over ~2–4 weeks).
             </li>
             <li>US CDC &amp; EPA excessive-heat guidance; WHO advice on fan use during heatwaves.</li>
+            <li>
+              Jay et al. &amp; Morris et al. — biophysical modelling and trials of fan use (beneficial in
+              warm-humid heat, detrimental in very-hot-dry heat).
+            </li>
+            <li>
+              Warm-night (&quot;tropical night&quot;) heat-mortality and sleep-in-heat literature —
+              overnight cooling and recovery.
+            </li>
           </ul>
           <p className="mt-3">
             These thresholds are best-effort and pending review by a qualified clinician before

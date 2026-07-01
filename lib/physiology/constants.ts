@@ -58,13 +58,38 @@ export const CAUTION = {
 // risk lowers them by 1.5× this.
 export const ELEVATED_RISK_TIGHTEN_C = 2.0;
 
-// Above roughly this AIR temperature (~95°F), an electric fan no longer reliably
-// cools and can actually add heat / speed dehydration unless the skin is wetted —
-// so the "no-AC, rest-of-day" advice changes here (wet skin / cool showers / seek a
-// cooler space, rather than rely on a fan alone).
-// Source: US CDC & EPA Excessive-Heat guidance; WHO public-health advice on fan use
-// during heatwaves; Jay et al. on the air-temperature limits of fan-based cooling.
-export const FAN_INEFFECTIVE_AIR_TEMP_C = 35;
+// A fan cools by moving air over sweaty skin, so whether it still helps depends on
+// BOTH air temperature AND humidity — and counter-intuitively, a fan keeps helping
+// to a HIGHER air temperature when the air is HUMID (moving air still drives
+// evaporation from wet skin) and stops helping — even adds heat / speeds dehydration
+// — at a LOWER air temperature when the air is HOT and DRY (it then adds convective
+// heat faster than it aids the little sweat that dry air already evaporates). So the
+// "is a fan still useful?" air-temperature limit SLIDES with humidity between these
+// two anchors, interpolated over the RH band below.
+// Source: Jay et al. and Morris et al. (biophysical modelling + human trials: fans
+// beneficial in warm-humid heat, detrimental in very-hot-dry heat, esp. older
+// adults); US CDC/EPA excessive-heat guidance; WHO advice on fan use in heatwaves.
+export const FAN_LIMIT_AIR_TEMP_C = {
+  DRY: 35, // ~95°F: in dry air a fan stops reliably helping near skin temperature
+  HUMID: 40, // ~104°F: in humid air a fan still helps well past skin temperature
+} as const;
+export const FAN_LIMIT_RH_PCT = {
+  DRY: 30, // at/below this RH, use the DRY air-temperature limit
+  HUMID: 60, // at/above this RH, use the HUMID air-temperature limit
+} as const;
+
+// Overnight recovery. Heat acclimatization and heat-illness recovery both depend on
+// the body shedding heat overnight; humidity (a high dew point) keeps nights warm
+// and sticky so they never cool, wrecking sleep and recovery — a leading driver of
+// heat-wave harm. A "warm night" starts at WARM_HEAT_INDEX; a night is judged
+// oppressively humid ("won't cool off") at/above MUGGY_WET_BULB. (The CAUTION 26.7
+// and EXTREME_CAUTION 32.2 heat-index bands mark poor / dangerous nights.)
+// Source: warm-night ("tropical night") heat-mortality literature; sleep-in-heat and
+// nocturnal-heat physiology (e.g. 2003 European heatwave analyses).
+export const OVERNIGHT_C = {
+  WARM_HEAT_INDEX: 23, // overnight-min feels-like at/above this = a "warm" night
+  MUGGY_WET_BULB: 20, // wet-bulb at/above this ≈ dew point ~20°C = oppressively humid
+} as const;
 
 // When picking the "good window to be outside", an hour counts as part of the cool
 // block if its heat index is within this many °C of the period's COOLEST hour — so

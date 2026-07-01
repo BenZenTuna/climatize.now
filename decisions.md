@@ -490,3 +490,87 @@ asked to implement the desktop version. Chosen shape and reasoning:
 Verified with real seeded state (Seville, 6 days in, one skipped hard-stop day) via headless
 Chromium at 1440 / 1024 / 402 px: the desktop bento renders correctly with live data, the mobile
 layout is unchanged, and there are no console errors. tsc + 75 tests + static build clean.
+
+---
+
+## 2026-07-01 — Humidity science: overnight recovery + humidity-aware fan rule
+
+**D35 — Two additive, humidity-focused refinements, chosen after a science review of how the
+platform handles humid heat.** Context: the owner asked whether humidity is properly considered
+and what to add. The finding was that humidity is *already* central — it enters the heat index,
+wet-bulb, and WBGT, all OR-gated in the safety overlay (D18), and it's in the gap/baseline (both
+use heat index) and in the plain-language copy (D29). The two genuine, well-evidenced gaps were
+**overnight recovery** and the **fan rule**, so both were implemented as additive pure modules +
+display, leaving the safety overlay, thresholds, plan engine, and window logic untouched.
+
+*#1 — Overnight-recovery outlook is foresight, not a dose input.* New pure
+`lib/physiology/overnight.ts` (`overnightRecoveryGuidance`) tiers the coming night's coolest
+hour into COOL/WARM/MUGGY/DANGEROUS from the overnight-min heat index **plus a wet-bulb "muggy"
+flag** (`OVERNIGHT_C.MUGGY_WET_BULB = 20°C`, ≈ dew point 20 — the meteorological "oppressive"
+line). Rationale: acclimatization and heat-illness recovery depend on shedding heat overnight,
+and a high dew point keeps nights warm and sticky so they never cool — a leading driver of
+heat-wave harm (warm-night/"tropical night" mortality literature). A warm-but-muggy night is
+flagged poor-recovery even just below the caution band, and a `humidDriven` flag distinguishes a
+sticky humid night from a merely hot dry one (verified live: Singapore feels-25°C/wet-bulb-23.7 →
+MUGGY+humidDriven; Riyadh feels-28.8/wet-bulb-14.6 → MUGGY but not humidDriven).
+  **Key scoping decision: it does NOT pre-emptively cut the next day's dose.** Poor overnight
+  recovery surfaces the next morning as low sleep-quality/overall-feeling in the daily check-in,
+  which the *already-tested* feedback loop (`scoreFeedback`) turns into REDUCE/HOLD. Hard-wiring a
+  separate overnight→dose penalty would double-count that and churn the tested acclimatization
+  core, so the overnight layer is pure guidance ("tonight won't cool off — prioritise a cool
+  sleeping space; if you sleep badly we ease tomorrow for you"). An explicit pre-emptive nudge
+  remains available as a future option if the owner wants it (it's the part that touches tested
+  code, so it's deferred rather than done silently).
+  `client-program.ts` `computeOvernight()` walks forward from "now" to the first upcoming
+  night-band run (8pm–7am) off the existing 2-day forecast (no new network) and adds
+  `overnight`/`overnightLowFeelsLikeC` to `TodayView`; a shared `OvernightCard` (Moon icon, level
+  chip, Humidity badge when `humidDriven`) renders in both mobile and desktop layouts.
+
+*#2 — The fan rule is now humidity-aware.* The single `FAN_INEFFECTIVE_AIR_TEMP_C = 35°C` cut off
+fan advice on air temperature alone, which is physiologically backwards for humid heat. Replaced
+with a humidity-sliding air-temp limit — `FAN_LIMIT_AIR_TEMP_C {DRY: 35, HUMID: 40}` interpolated
+over `FAN_LIMIT_RH_PCT {DRY: 30, HUMID: 60}` by the new pure `fanEffectiveAirTempLimitC(rh)`.
+Rationale (Jay et al.; Morris et al., biophysical modelling + trials): a fan keeps cooling to a
+*higher* air temperature when the air is humid (moving air still drives evaporation from wet
+skin), and stops helping — even adds heat / speeds dehydration — at a *lower* air temperature when
+the air is hot and dry, especially for older adults. `RestOfDayInput` gains `peakAirHumidityPct`
+(the RH at the hottest-air hour, read together with the temp in `computeRestOfDay`), and the
+EXTREME/HOT copy branches on the humidity-aware `fanStillHelps` (humid extreme → keep the fan over
+wet skin; dry extreme → fan alone won't help). Verified live: Phoenix 38°C @ 6% RH → limit 35 →
+fan dropped; Singapore 29°C @ 74% RH → limit 40 → fan kept.
+
+Docs: `app/how-it-works` "After your session" rewrote the fan detail as temperature×humidity and
+added a "nights matter" overnight paragraph, plus two sources (fan biophysical modelling;
+warm-night mortality / sleep-in-heat). Scope is additive pure modules (`overnight.ts`, new
+`recovery.ts` helper + field) + one display card + copy; the safety overlay, thresholds, plan
+engine, acclimatization core, and window logic are unchanged. Thresholds remain pending clinician
+review (Q1). 82 tests (+7: 5 overnight, 2 net recovery) + tsc + static build clean.
+
+---
+
+## 2026-07-01 — GoatCounter analytics (`/stats`) — settled integration facts + bugfix
+
+**D36 — The privacy-analytics layer is GoatCounter, site code `climatize`, read via a
+browser-direct token call.** The owner hit "No data received" and couldn't find the API token;
+the diagnosis surfaced facts worth pinning so they're not re-derived:
+- **Site code is `climatize`** (account `climatize.goatcounter.com`), NOT `climatize-now`. The
+  app had hardcoded `climatize-now` in `app/layout.tsx` (tracking script) and
+  `app/stats/page.tsx` (API); that subdomain was never registered (verified: HTTP 400), so the
+  tracker sent pageviews nowhere. Both now use `"climatize"`. If the code is ever changed in
+  GoatCounter (Settings → Domain settings → Code), update these two constants to match.
+- **API tokens are created under the username menu → API** (`/user/api`), not the Settings
+  tabs — the on-page `/stats` instructions were corrected accordingly.
+- **The token API is CORS-enabled** (`access-control-allow-origin: *`), so a static, no-server
+  site can read stats directly from the browser with the user's token — this is what keeps
+  `/stats` compatible with the fully-client-side architecture (D21). No server proxy needed.
+- **Response shape:** `GET /api/v0/stats/hits?start&end&daily=true&limit=100` returns `hits[]`
+  **per path**, each with a nested `stats[]` of `{day, daily}`, plus an integer `total`. The
+  page aggregates `stats[].daily` by day into a site-wide daily series, uses `total` for the
+  headline count, and shows "Page views" + "Busiest day" (GoatCounter's token API doesn't give
+  a clean per-period unique count from this endpoint, so the old always-0 "Unique visitors"
+  card was dropped rather than shown broken).
+
+The token is stored only in the visitor's `localStorage` (`climatize.stats.gc_token`) and sent
+only to GoatCounter — consistent with the no-server privacy posture. Owner action required:
+redeploy so the corrected tracker is live, then create a read-only token and paste it into
+`/stats`. tsc + static build clean.

@@ -4,11 +4,16 @@
 // sessions) and prevents heat illness during the hottest hours.
 //
 // The right advice is climate-aware in two ways: it differs a lot WITH vs. WITHOUT
-// air conditioning, and the "without AC" advice depends on how hot the AIR is — once
-// the air is hotter than skin (~35°C / 95°F) a fan stops cooling and can worsen
-// strain unless the skin is wetted (see FAN_INEFFECTIVE_AIR_TEMP_C). Pure functions.
+// air conditioning, and whether a fan still helps depends on BOTH the air temperature
+// AND the humidity — a fan keeps cooling in humid heat to higher air temperatures,
+// but in hot DRY air it stops helping (and can worsen strain) unless the skin is
+// wetted (see FAN_LIMIT_AIR_TEMP_C / FAN_LIMIT_RH_PCT). Pure functions.
 
-import { HEAT_INDEX_BANDS_C, FAN_INEFFECTIVE_AIR_TEMP_C } from "./constants";
+import {
+  HEAT_INDEX_BANDS_C,
+  FAN_LIMIT_AIR_TEMP_C,
+  FAN_LIMIT_RH_PCT,
+} from "./constants";
 
 export type RestOfDayLevel = "MILD" | "WARM" | "HOT" | "EXTREME";
 
@@ -17,8 +22,24 @@ export interface RestOfDayInput {
   peakHeatIndexC: number;
   /** Peak AIR temperature (°C) over the hours remaining today — drives the fan caveat. */
   peakAirTempC: number;
+  /** Relative humidity (%) at that peak-air-temperature hour — slides the fan limit. */
+  peakAirHumidityPct: number;
   /** Label of the last remaining hour that's still ≥ caution-warm (e.g. "around 7pm"), or null. */
   hotUntil: string | null;
+}
+
+/**
+ * The air temperature (°C) below which an electric fan still reliably helps, given
+ * the humidity. Humid air raises the limit (moving air still drives evaporation from
+ * wet skin); dry air lowers it (the fan adds convective heat faster than it aids the
+ * little sweat dry air already evaporates). Linearly interpolated between the DRY and
+ * HUMID anchors over the RH band, clamped outside it.
+ */
+export function fanEffectiveAirTempLimitC(rhPct: number): number {
+  const { DRY: rhDry, HUMID: rhHumid } = FAN_LIMIT_RH_PCT;
+  const { DRY: tDry, HUMID: tHumid } = FAN_LIMIT_AIR_TEMP_C;
+  const f = Math.max(0, Math.min(1, (rhPct - rhDry) / (rhHumid - rhDry)));
+  return tDry + (tHumid - tDry) * f;
 }
 
 export interface RestOfDayGuidance {
@@ -43,7 +64,8 @@ function levelFor(peakHeatIndexC: number): RestOfDayLevel {
  */
 export function restOfDayGuidance(input: RestOfDayInput): RestOfDayGuidance {
   const level = levelFor(input.peakHeatIndexC);
-  const fanStillHelps = input.peakAirTempC < FAN_INEFFECTIVE_AIR_TEMP_C;
+  const fanStillHelps =
+    input.peakAirTempC < fanEffectiveAirTempLimitC(input.peakAirHumidityPct);
   const until = input.hotUntil;
 
   if (level === "EXTREME") {
@@ -54,8 +76,9 @@ export function restOfDayGuidance(input: RestOfDayInput): RestOfDayGuidance {
         : "Dangerous heat for the rest of the day",
       withAC:
         "Stay in air conditioning through the hottest hours. If home doesn't cool down, spend a few hours somewhere that does — a mall, library, supermarket, or a friend's place.",
-      withoutAC:
-        "A fan alone won't cool you in air this hot and can speed dehydration — so wet your skin and clothes (or take cool showers) so moving air still cools you, lay damp cloths on your neck and wrists, close blinds on the sunny side, and rest in the coolest room. Sip water steadily and add a little salt with food.",
+      withoutAC: fanStillHelps
+        ? "It's dangerously hot but humid, so a fan still helps IF your skin is wet — wet your skin and clothes (or take cool showers) and keep air moving over them, lay damp cloths on your neck and wrists, close blinds on the sunny side, and rest in the coolest room. Sip water steadily and add a little salt with food."
+        : "A fan alone won't cool you in air this hot and dry and can speed dehydration — so wet your skin and clothes (or take cool showers) so moving air still cools you, lay damp cloths on your neck and wrists, close blinds on the sunny side, and rest in the coolest room. Sip water steadily and add a little salt with food.",
       recoveryNote:
         "You've already had today's heat dose — cooling down now helps you recover and sleep, and it won't undo your progress.",
     };

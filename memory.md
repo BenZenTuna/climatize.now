@@ -5,6 +5,72 @@ Newest entry at the top.
 
 ---
 
+## 2026-07-01 — Fixed GoatCounter analytics (`/stats`): wrong site code + API parsing
+
+Owner reported the GoatCounter dashboard showed **"No data received"** and couldn't find the
+API token page. Diagnosed two real bugs (decisions **D36**); tsc + static build clean.
+- **ROOT CAUSE — wrong site code.** The app hardcoded `GC_SITE = "climatize-now"` in
+  `app/layout.tsx` (tracking `<Script>`) and `app/stats/page.tsx` (API), but the owner
+  registered **`climatize`** (account = `climatize.goatcounter.com`). Verified live:
+  `climatize-now.goatcounter.com` → HTTP 400 (never existed); `climatize.goatcounter.com` →
+  303. So the tracker was posting to a nonexistent site → no data. **Fixed both to
+  `"climatize"`.** Owner must **redeploy** for the corrected tracker to go live, then real
+  visits will populate the dashboard (GoatCounter counts the owner's own visits unless
+  "disable for this browser" was clicked).
+- **API token location.** GoatCounter puts token creation under the **username menu**
+  (top-right "tanerr@") → **API** (`/user/api`), NOT under Settings tabs. The `/stats`
+  on-page steps said "Settings → API" (wrong) — rewrote them to "account menu (your email,
+  top-right) → API" and pointed step 1 at `climatize.goatcounter.com`.
+- **SECOND bug — response parsing.** Verified the API's OpenAPI (`goatcounter.com/api.json`):
+  `GET /api/v0/stats/hits?start&end&daily=true` returns `hits[]` **one entry per PATH**, each
+  with a nested `stats[]` of `{day, daily}`, plus a top-level integer `total`. The old code
+  treated each `hits[]` entry as a day (`r.day`/`r.count_unique` — neither exists) and read
+  `data.total.count` (it's an int). Rewrote `fetchStats` to **aggregate `stats[].daily` by day
+  across paths** (site-wide daily series), use `data.total` for the total, and dropped the
+  always-0 "Unique visitors" card for a **"Busiest day"** (peak daily) card. Added `&limit=100`
+  so all paths are captured. `DayStat`/`Totals` interfaces updated.
+- **CORS is NOT a problem** (had worried it would be): live check shows
+  `/api/v0/stats/hits` returns `access-control-allow-origin: *`, so the browser-direct token
+  call works from the static site — no server/proxy needed (upholds D21). The `corsBlocked`
+  fallback in the page stays as a harmless safety net.
+
+## 2026-07-01 — Humidity science: overnight-recovery outlook + humidity-aware fan rule
+
+Owner asked (science question) how the platform handles high humidity and what to add.
+Confirmed humidity is already central (heat index + wet-bulb + WBGT, OR-gated in `safety.ts`;
+gap/baseline use heat index; copy names humidity when wet-bulb/WBGT drives it). Then
+implemented the two highest-value additions (decisions **D35**). 82 tests (+7) + tsc + static
+build clean; **verified live** (Singapore/KL vs Phoenix/Riyadh) — behaves as designed.
+
+- **#1 Overnight-recovery outlook** — new pure module `lib/physiology/overnight.ts`
+  (`overnightRecoveryGuidance`): tiers the coming night's COOLEST hour into
+  COOL/WARM/MUGGY/DANGEROUS from the overnight-min heat index **plus a wet-bulb "muggy"
+  flag** (`OVERNIGHT_C.MUGGY_WET_BULB = 20°C` ≈ dew point 20). A warm night that stays muggy
+  is flagged poor-recovery even below the caution band, and `humidDriven` marks when humidity
+  (not just heat) is the reason — so a sticky tropical night (Singapore: feels 25°C but
+  wet-bulb 23.7 → MUGGY/humidDriven) and a hot-dry night (Riyadh: feels 28.8 but wet-bulb 14.6
+  → MUGGY, NOT humidDriven) read differently. `client-program.ts` `computeOvernight()` walks
+  forward from "now" to the first upcoming night-band run (8pm–7am) using the existing 2-day
+  fetch (no new network); adds `overnight`/`overnightLowFeelsLikeC` to `TodayView`. New
+  **`OvernightCard`** in `app/today/shared.tsx` (Moon icon, level chip, **Humidity badge** when
+  humidDriven, "dips to ~X") rendered after the rest-of-day card in BOTH mobile + desktop.
+  **Deliberately NO pre-emptive dose penalty** — poor sleep surfaces next morning as low
+  sleep-quality/feeling, which the tested feedback loop already turns into REDUCE/HOLD; hard-
+  wiring would double-count and churn the tested core. (Offered to add an explicit nudge later.)
+- **#2 Humidity-aware fan rule** — replaced the single `FAN_INEFFECTIVE_AIR_TEMP_C = 35`
+  with a humidity-sliding limit: `FAN_LIMIT_AIR_TEMP_C {DRY:35, HUMID:40}` interpolated over
+  `FAN_LIMIT_RH_PCT {DRY:30, HUMID:60}` via new pure `fanEffectiveAirTempLimitC(rh)` in
+  `recovery.ts`. Science (Jay/Morris): a fan keeps helping to HIGHER air temps in humid heat
+  (drives evaporation off wet skin) and stops/​harms in hot-DRY air. `RestOfDayInput` gains
+  `peakAirHumidityPct` (RH at the hottest-air hour, read in `computeRestOfDay`). EXTREME + HOT
+  copy now branch on the humidity-aware `fanStillHelps` (humid extreme → "fan still helps IF
+  skin is wet"; dry extreme → "won't cool you in air this hot and dry"). Verified: Phoenix 38°C
+  @6% → limit 35 → fan dropped; Singapore 29°C @74% → limit 40 → fan kept.
+- **Docs**: `app/how-it-works` "After your session" rewrote the fan detail (temp×humidity) and
+  added an **overnight/nights-matter** paragraph + two sources (fan biophysical modelling;
+  warm-night mortality/sleep-in-heat). Safety overlay, thresholds, plan engine, window logic all
+  **untouched** — additive pure modules + one display card.
+
 ## 2026-07-01 — Today Dashboard — Desktop layout (sidebar + 12-col bento)
 
 Owner imported a second Claude Design file from the same project

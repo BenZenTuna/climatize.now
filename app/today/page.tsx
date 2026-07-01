@@ -30,7 +30,7 @@ import {
 import { fmtTemp, fmtTempRange, PERSONA_LABEL } from "@/lib/units";
 import type { Units } from "@/lib/physiology/types";
 import { DesktopToday } from "@/app/today/desktop";
-import { SAFE, INTENSITY_LABEL, ADJUST, windLabel, PlanPill, RecognitionList } from "@/app/today/shared";
+import { SAFE, INTENSITY_LABEL, ADJUST, windLabel, PlanPill, RecognitionList, OvernightCard } from "@/app/today/shared";
 
 export default function TodayPage() {
   const router = useRouter();
@@ -386,6 +386,11 @@ export default function TodayPage() {
         </div>
         <p className="mt-3 text-[12px] italic text-[#a8a29e]">{v.restOfDay.recoveryNote}</p>
       </section>
+
+      {/* OVERNIGHT RECOVERY */}
+      {v.overnight && (
+        <OvernightCard overnight={v.overnight} lowFeelsLikeC={v.overnightLowFeelsLikeC} units={units} />
+      )}
 
       {/* WHY */}
       <section className={DC_CARD}>

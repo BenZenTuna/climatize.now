@@ -5,8 +5,9 @@ import { Space_Grotesk, Space_Mono } from "next/font/google";
 import "./globals.css";
 import { SwRegister } from "./sw-register";
 
-// Change "climatize-now" below if you chose a different site code on goatcounter.com
-const GC_SITE = "climatize-now";
+// GoatCounter site code — must match the account's subdomain: climatize.goatcounter.com.
+// (Was "climatize-now", which was never registered, so the tracker sent data nowhere.)
+const GC_SITE = "climatize";
 
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-space-grotesk",

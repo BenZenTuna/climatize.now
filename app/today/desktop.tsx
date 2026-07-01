@@ -7,7 +7,7 @@ import { ForecastStrip } from "@/app/forecast-strip";
 import { ProgressTrends } from "@/app/progress-trends";
 import { Sidebar } from "@/app/today/sidebar";
 import { ProgramCalendar } from "@/app/today/program-calendar";
-import { SAFE, INTENSITY_LABEL, ADJUST, windLabel, PlanPill, RecognitionList } from "@/app/today/shared";
+import { SAFE, INTENSITY_LABEL, ADJUST, windLabel, PlanPill, RecognitionList, OvernightCard } from "@/app/today/shared";
 import { DC_CARD, DC_CARD_WARM, DC_MONO_HEAD } from "@/app/dc-styles";
 import {
   Activity,
@@ -275,6 +275,10 @@ export function DesktopToday({
                 </div>
                 <p className="mt-3 text-[12px] italic text-[#a8a29e]">{v.restOfDay.recoveryNote}</p>
               </section>
+
+              {v.overnight && (
+                <OvernightCard overnight={v.overnight} lowFeelsLikeC={v.overnightLowFeelsLikeC} units={units} />
+              )}
 
               <section className={DC_CARD}>
                 <span className={DC_MONO_HEAD}>Why today looks like this</span>

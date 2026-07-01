@@ -9,11 +9,12 @@ import {
   findGoodWindows,
   ORIGIN_BAND_HEAT_INDEX_C,
 } from "./weather/open-meteo";
-import type { MultiDayForecast, SafestWindow, WindowDisplay } from "./weather/open-meteo";
+import type { MultiDayForecast, SafestWindow, WindowDisplay, HourPoint } from "./weather/open-meteo";
 export type { WindowDisplay } from "./weather/open-meteo";
 import { generateDayPlan } from "./physiology/plan-engine";
 import { assessScreening, evaluateEnvironment } from "./physiology/safety";
 import { restOfDayGuidance, type RestOfDayGuidance } from "./physiology/recovery";
+import { overnightRecoveryGuidance, type OvernightGuidance } from "./physiology/overnight";
 import { HEAT_INDEX_BANDS_C } from "./physiology/constants";
 import {
   scoreFeedback,
@@ -130,15 +131,48 @@ function computeRestOfDay(mdf: MultiDayForecast): {
   const remaining = mdf.days[0].hours.filter((h) => h.time >= mdf.now.time);
   const pool = remaining.length ? remaining : [mdf.now];
   const peakFeelsLikeC = Math.max(...pool.map((h) => h.conditions.heatIndexC));
-  const peakAirTempC = Math.max(...pool.map((h) => h.conditions.tempC));
+  // Humidity at the hottest-AIR hour drives the fan caveat, so read them together.
+  const hottestAir = pool.reduce((a, b) => (b.conditions.tempC > a.conditions.tempC ? b : a));
   const hotHours = pool.filter((h) => h.conditions.heatIndexC >= HEAT_INDEX_BANDS_C.CAUTION);
   const lastHot = hotHours.length ? hotHours[hotHours.length - 1] : null;
   const guidance = restOfDayGuidance({
     peakHeatIndexC: peakFeelsLikeC,
-    peakAirTempC,
+    peakAirTempC: hottestAir.conditions.tempC,
+    peakAirHumidityPct: hottestAir.conditions.humidityPct,
     hotUntil: lastHot ? labelHour(lastHot.hour) : null,
   });
   return { guidance, peakFeelsLikeC };
+}
+
+/**
+ * The coming NIGHT's recovery outlook: walk forward from "now" to the first upcoming
+ * run of night-band hours (8pm–7am) and read the coolest moment — how far it drops
+ * (heat index + air temp) and whether it stays muggy (wet-bulb). Returns null when
+ * there isn't enough night ahead to say anything useful (e.g. late morning).
+ */
+function computeOvernight(
+  mdf: MultiDayForecast,
+): { guidance: OvernightGuidance; lowFeelsLikeC: number } | null {
+  const forward = [...mdf.days[0].hours, ...(mdf.days[1]?.hours ?? [])].filter(
+    (h) => h.time >= mdf.now.time,
+  );
+  const isNight = (h: HourPoint) => h.hour >= 20 || h.hour <= 7;
+  const start = forward.findIndex(isNight);
+  if (start === -1) return null;
+  const night: HourPoint[] = [];
+  for (let i = start; i < forward.length && isNight(forward[i]); i++) night.push(forward[i]);
+  if (night.length < 2) return null;
+
+  const coolest = night.reduce((a, b) =>
+    b.conditions.heatIndexC < a.conditions.heatIndexC ? b : a,
+  );
+  const guidance = overnightRecoveryGuidance({
+    minHeatIndexC: coolest.conditions.heatIndexC,
+    minAirTempC: coolest.conditions.tempC,
+    coolestWetBulbC: coolest.conditions.wetBulbC,
+    coolestAround: labelHour(coolest.hour),
+  });
+  return { guidance, lowFeelsLikeC: coolest.conditions.heatIndexC };
 }
 
 // ---------------------------------------------------------------------------
@@ -165,6 +199,8 @@ export interface TodayView {
   nowSafetyLevel: SafetyLevel; // how dangerous it is RIGHT NOW (vs the safe window)
   restOfDay: RestOfDayGuidance; // how to spend the rest of today (with/without AC)
   restOfDayPeakFeelsLikeC: number; // peak feels-like over the hours still ahead
+  overnight: OvernightGuidance | null; // the coming night's recovery outlook (humidity-aware)
+  overnightLowFeelsLikeC: number | null; // the coolest feels-like the night reaches
   yesterdayTargetMinutes: number | null;
   units: Units;
 }
@@ -208,6 +244,7 @@ export async function buildTodayView(state: AppState): Promise<TodayView> {
   const todayGoodWindows = findUpcomingGoodWindows(mdf, tighten);
   const heatCurve = buildHeatCurve(mdf, tighten);
   const restOfDay = computeRestOfDay(mdf);
+  const overnight = computeOvernight(mdf);
 
   // The day's PEAK heat is the real adaptation challenge (the gap); exposure is
   // still timed to the cool window above.
@@ -243,6 +280,8 @@ export async function buildTodayView(state: AppState): Promise<TodayView> {
     nowSafetyLevel: evaluateEnvironment(mdf.now.conditions, tighten).level,
     restOfDay: restOfDay.guidance,
     restOfDayPeakFeelsLikeC: restOfDay.peakFeelsLikeC,
+    overnight: overnight?.guidance ?? null,
+    overnightLowFeelsLikeC: overnight?.lowFeelsLikeC ?? null,
     yesterdayTargetMinutes: state.history[D - 1]?.targetMinutes ?? null,
     units: state.units,
   };

@@ -3,8 +3,8 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 
-// Change this constant if you chose a different site code when signing up on goatcounter.com
-const GC_SITE = "climatize-now";
+// GoatCounter site code — must match the account's subdomain: climatize.goatcounter.com.
+const GC_SITE = "climatize";
 const TOKEN_KEY = "climatize.stats.gc_token";
 
 type Period = "7d" | "30d" | "90d";
@@ -12,12 +12,11 @@ type Period = "7d" | "30d" | "90d";
 interface DayStat {
   day: string;
   count: number;
-  count_unique: number;
 }
 
 interface Totals {
   count: number;
-  unique: number;
+  peak: number;
 }
 
 function dateRange(period: Period) {
@@ -92,26 +91,35 @@ export default function StatsPage() {
     setCorsBlocked(false);
     const { start, end } = dateRange(p);
     try {
+      // Pull all paths (limit high) with a per-day breakdown; a small site has few paths.
       const res = await fetch(
-        `https://${GC_SITE}.goatcounter.com/api/v0/stats/hits?start=${start}&end=${end}&daily=true`,
+        `https://${GC_SITE}.goatcounter.com/api/v0/stats/hits?start=${start}&end=${end}&daily=true&limit=100`,
         { headers: { Authorization: `Bearer ${tok}` } }
       );
-      if (res.status === 401) {
+      if (res.status === 401 || res.status === 403) {
         throw new Error("Invalid API token. Check your GoatCounter API key and try again.");
       }
       if (!res.ok) throw new Error(`GoatCounter API returned ${res.status}.`);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const data: any = await res.json();
-      // GoatCounter may use "hits" or "stats" depending on version
-      const statRows: DayStat[] = (data.hits ?? data.stats ?? []).map((r: DayStat) => ({
-        day: r.day,
-        count: r.count ?? 0,
-        count_unique: r.count_unique ?? 0,
-      }));
+      // GoatCounter returns one entry PER PATH in `hits`, each with a `stats` array of
+      // per-day counts ({ day, daily }). Aggregate across paths → a site-wide daily series.
+      const byDay = new Map<string, number>();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      for (const hit of (data.hits ?? []) as any[]) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        for (const s of (hit.stats ?? []) as any[]) {
+          byDay.set(s.day, (byDay.get(s.day) ?? 0) + (s.daily ?? 0));
+        }
+      }
+      const statRows: DayStat[] = [...byDay.entries()]
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([day, count]) => ({ day, count }));
       setDays(statRows);
-      const totalCount = data.total_count ?? data.total?.count ?? statRows.reduce((s, r) => s + r.count, 0);
-      const uniqueCount = data.total_count_unique ?? data.total?.count_unique ?? statRows.reduce((s, r) => s + r.count_unique, 0);
-      setTotals({ count: totalCount, unique: uniqueCount });
+      const totalCount =
+        typeof data.total === "number" ? data.total : statRows.reduce((s, r) => s + r.count, 0);
+      const peak = statRows.reduce((m, r) => Math.max(m, r.count), 0);
+      setTotals({ count: totalCount, peak });
     } catch (err) {
       if (err instanceof TypeError) {
         // Likely a CORS block
@@ -186,19 +194,19 @@ export default function StatsPage() {
               <h2 className="font-semibold text-slate-700">Connect GoatCounter</h2>
               <ol className="mt-3 space-y-1.5 text-sm text-slate-600 list-decimal list-inside">
                 <li>
-                  Create a free account at{" "}
+                  Sign in at{" "}
                   <a
-                    href="https://www.goatcounter.com"
+                    href={`https://${GC_SITE}.goatcounter.com`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-orange-500 underline"
                   >
-                    goatcounter.com
-                  </a>{" "}
-                  — use site code <strong>climatize-now</strong>
+                    {GC_SITE}.goatcounter.com
+                  </a>
                 </li>
                 <li>
-                  In GoatCounter → <strong>Settings → API</strong>, create a token (read-only is fine)
+                  Open your <strong>account menu</strong> (your email, top-right) →{" "}
+                  <strong>API</strong>, and create a token (read-only is fine)
                 </li>
                 <li>Paste it below — it stays in your browser only, never sent anywhere</li>
               </ol>
@@ -286,11 +294,7 @@ export default function StatsPage() {
                 {totals && (
                   <div className="grid grid-cols-2 gap-4">
                     <StatCard label="Page views" value={totals.count} sub="in selected period" />
-                    <StatCard
-                      label="Unique visitors"
-                      value={totals.unique}
-                      sub="estimated, privacy-safe"
-                    />
+                    <StatCard label="Busiest day" value={totals.peak} sub="most views in a day" />
                   </div>
                 )}
 
