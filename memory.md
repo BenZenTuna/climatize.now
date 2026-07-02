@@ -5,6 +5,45 @@ Newest entry at the top.
 
 ---
 
+## 2026-07-02 — Desktop Today redesign (second Claude Design import)
+
+Owner imported a new Claude Design file (`Desktop Today.dc.html`, project
+`eb41f117-b6af-42f2-98da-e686371983f7`) and asked to implement the new desktop layout.
+Read via DesignSync MCP. tsc clean + 82 tests pass + static build clean; verified live
+at 1440px (desktop new layout) and 402px (mobile unchanged).
+
+**New bento layout (replaces the old 5-row arrangement):**
+- **Row 1 — plan hero (7) | day & night (5):** The plan hero now leads with a colour-coded
+  safety banner (CAUTION=amber / NORMAL=green / HARD_STOP=red) instead of a separate safety
+  card, then shows plan content (headline, adj badge, pills, 2-col steps, hydration, why +
+  cautions inline). The "Your day & night" card (5 cols) combines what were three separate
+  cards: cool windows (morning/evening with "your session" badge on the active window),
+  "hot right now" notice, rest-of-day (with/without AC), and tonight's recovery — all in
+  one scrollable card.
+- **Row 2 — heat+stats (8) | forecast (4):** The heat chart section now shows the four live
+  stats (Now / Feels like / Humidity / Wind) inline in the card header (via a new `statsRow`
+  prop on `HeatClock`). The separate "Live conditions" card from the old Row A is gone.
+- **Row 3 — adaptation+progress (12):** Ring (190px) + 2×2 stats + retention note (250px) +
+  5-column sparklines (flex:1) all in ONE unified section. Replaces the old separate
+  AdaptationRing card (Row A) and ProgressTrends card (Row E).
+- **Row 4 — program calendar (12):** Unchanged.
+- **Row 5 — warning signs (12):** Now full-width 3-col (heat exhaustion | heat stroke | red
+  stop box), replacing the old col-span-5 card.
+
+**Code changes:**
+- `app/adaptation-ring.tsx`: exported `Ring` (was private) so desktop can use just the SVG.
+- `app/today/shared.tsx`: exported `NIGHT` palette (needed for inline overnight in the
+  day&night card).
+- `app/heat-clock.tsx`: added `statsRow?: React.ReactNode` prop — when provided it replaces
+  the "feels-like" label in the header with the stats row; mobile passes nothing (unchanged).
+- `app/today/sidebar.tsx`: Progress sidebar link changed from `#progress` to `#adaptation`
+  to match the new section ID.
+- `app/today/desktop.tsx`: complete rewrite matching the new design. `AreaSpark` and
+  `SPARK_MARKERS` are inlined (copied from progress-trends) for the 5-col sparkline grid.
+  Mobile page, safety overlay, plan engine, and all other files untouched.
+
+---
+
 ## 2026-07-01 — Fixed GoatCounter analytics (`/stats`): wrong site code + API parsing
 
 Owner reported the GoatCounter dashboard showed **"No data received"** and couldn't find the

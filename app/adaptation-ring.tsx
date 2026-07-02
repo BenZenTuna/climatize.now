@@ -3,7 +3,7 @@
 import { DC_CARD as CARD, DC_MONO_HEAD as MONO_HEAD, DC_MONO_SMALL as MONO_SMALL } from "@/app/dc-styles";
 
 /** The circular adaptation gauge (ported from the Today Dashboard design). */
-function Ring({ pct, size = 148 }: { pct: number; size?: number }) {
+export function Ring({ pct, size = 148 }: { pct: number; size?: number }) {
   const S = 176,
     cx = 88,
     cy = 88,

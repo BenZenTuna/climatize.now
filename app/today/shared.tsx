@@ -53,7 +53,7 @@ export function PlanPill({ icon, children }: { icon: React.ReactNode; children: 
 }
 
 /** Overnight-recovery palette, keyed to how well the night cools (humidity included). */
-const NIGHT: Record<OvernightLevel, { accent: string; chipBg: string; chipInk: string; label: string }> = {
+export const NIGHT: Record<OvernightLevel, { accent: string; chipBg: string; chipInk: string; label: string }> = {
   COOL: { accent: "#0891b2", chipBg: "#cffafe", chipInk: "#155e75", label: "Cools off" },
   WARM: { accent: "#d97706", chipBg: "#fef3c7", chipInk: "#92400e", label: "Warm night" },
   MUGGY: { accent: "#ea580c", chipBg: "#ffedd5", chipInk: "#9a3412", label: "Warm & humid" },

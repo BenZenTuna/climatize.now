@@ -11,7 +11,7 @@ import type { Units } from "@/lib/physiology/types";
  * timing message (be active in the cool window, not the midday peak) is visual.
  * Ported from the Today Dashboard design.
  */
-export function HeatClock({ curve, units }: { curve: HeatCurve; units: Units }) {
+export function HeatClock({ curve, units, statsRow }: { curve: HeatCurve; units: Units; statsRow?: React.ReactNode }) {
   const { feelsC: feels, windows, nowHour } = curve;
   const deg = (c: number) => `${Math.round(units === "F" ? (c * 9) / 5 + 32 : c)}°`;
 
@@ -34,9 +34,9 @@ export function HeatClock({ curve, units }: { curve: HeatCurve; units: Units }) 
 
   return (
     <section className={DC_CARD}>
-      <div className="flex items-baseline justify-between">
+      <div className={`flex justify-between gap-3 ${statsRow ? "flex-wrap items-center" : "items-baseline"}`}>
         <span className={`${DC_MONO_HEAD} whitespace-nowrap`}>Today&apos;s heat · hourly</span>
-        <span className="whitespace-nowrap font-mono text-[10px] text-[#a8a29e]">feels-like</span>
+        {statsRow ?? <span className="whitespace-nowrap font-mono text-[10px] text-[#a8a29e]">feels-like</span>}
       </div>
 
       <div className="mt-3">

@@ -89,7 +89,7 @@ export function Sidebar({ onStartOver }: { onStartOver: () => void }) {
       <nav className="mt-6 flex flex-col gap-[3px]">
         <Item href="/today" active icon={<SunIcon className={ICON} />}>Today</Item>
         <Item href="/log" icon={<PencilIcon className={ICON} />}>Log today</Item>
-        <Item href="#progress" icon={<TrendIcon className={ICON} />}>Progress</Item>
+        <Item href="#adaptation" icon={<TrendIcon className={ICON} />}>Progress</Item>
         <Item href="#program" icon={<CalendarIcon className={ICON} />}>Program</Item>
         <Item href="#forecast" icon={<CloudIcon className={ICON} />}>Forecast</Item>
       </nav>
