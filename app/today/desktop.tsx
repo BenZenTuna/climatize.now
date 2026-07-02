@@ -138,6 +138,27 @@ export function DesktopToday({
                 {v.currentLabel}
               </div>
               <div className="mt-[3px] text-[14px] text-[#78716c]">{PERSONA_LABEL[state.persona] ?? state.persona}</div>
+              <div className="mt-2 flex items-center gap-3">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-[11px] text-[#a8a29e]">Now</span>
+                  <span className="text-[14px] font-bold text-stone-900">{fmtTemp(v.current.tempC, units)}</span>
+                </div>
+                <div className="h-3 w-px bg-[#f4ead9]" />
+                <div className="flex items-baseline gap-1">
+                  <span className="text-[11px] text-[#a8a29e]">Feels like</span>
+                  <span className="text-[14px] font-bold text-[#c2410c]">{fmtTemp(v.current.apparentTempC, units)}</span>
+                </div>
+                <div className="h-3 w-px bg-[#f4ead9]" />
+                <div className="flex items-baseline gap-1">
+                  <span className="text-[11px] text-[#a8a29e]">Humidity</span>
+                  <span className="text-[14px] font-bold text-stone-900">{Math.round(v.current.humidityPct)}%</span>
+                </div>
+                <div className="h-3 w-px bg-[#f4ead9]" />
+                <div className="flex items-baseline gap-1">
+                  <span className="text-[11px] text-[#a8a29e]">Wind</span>
+                  <span className="text-[14px] font-bold text-stone-900">{windLabel(v.windKmh, units)}</span>
+                </div>
+              </div>
             </div>
             <div className="flex items-center gap-3">
               <span className="font-mono text-[12px] text-[#a8a29e]">{dateLabel}</span>
